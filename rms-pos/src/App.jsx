@@ -22,6 +22,7 @@ import BillingView from './views/BillingView';
 import SettingsView from './views/SettingsView';
 import HelpView from './views/HelpView';
 import QROrderingView from './views/qr/QROrderingView';
+import PickupBoardView from './views/PickupBoardView';
 
 function AppLayout() {
   const { user } = useAuth();
@@ -133,6 +134,10 @@ export default function App() {
               {/* Customer QR Ordering routes (Isolated from staff layout) */}
               <Route path="/qr/:token" element={<QROrderingView />} />
               <Route path="/order" element={<QROrderingView />} />
+
+              {/* Full-screen TV Pickup Board (Isolated from staff layout for TV mounting) */}
+              <Route path="/pickup-board" element={<PickupBoardView />} />
+              <Route path="/tv" element={<PickupBoardView />} />
 
               {/* Staff and POS routes */}
               <Route path="/login" element={<LoginRoute />} />

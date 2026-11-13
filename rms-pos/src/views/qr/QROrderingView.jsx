@@ -44,6 +44,7 @@ export default function QROrderingView() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState(null);
+  const [activeOrder, setActiveOrder] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
   const [activatingTable, setActivatingTable] = useState(null);
@@ -136,7 +137,7 @@ export default function QROrderingView() {
 
     try {
       const payload = {
-        order_type: 'dine_in',
+        order_type: 'takeaway',
         customer_name: customerName,
         notes: orderNotes,
         items: cart.map((i) => ({
@@ -155,8 +156,9 @@ export default function QROrderingView() {
       if (res && res.order) {
         setCart([]);
         setIsCartOpen(false);
+        setActiveOrder(res.order);
         setActiveOrderId(res.order.id);
-        toast.success('Order ticket dispatched to kitchen!');
+        toast.success(`Token ${res.order.order_number || ''} generated! Collect at counter.`);
       }
     } catch (err) {
       toast.error(`Order failed: ${err.message || 'Please contact staff'}`);
@@ -222,66 +224,77 @@ export default function QROrderingView() {
     );
   }
 
-  // 3. Welcome / Table Selection Screen if user visited /order directly without scanning
+  // 3. Welcome / Counter Pickup Screen if user visited /order directly without scanning
   if (!session && !token) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
         <div className="w-full max-w-lg bg-white/90 backdrop-blur-md rounded-2xl border border-stone-200/80 shadow-sm p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-[#D9480F] text-white flex items-center justify-center mx-auto mb-3 shadow-md">
-              <QrCode className="w-7 h-7" />
+            <div className="w-16 h-16 rounded-3xl bg-[#D9480F] text-white flex items-center justify-center mx-auto mb-3 shadow-md">
+              <ShoppingBag className="w-8 h-8" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight">
-              {tenant?.brandName || 'Foodie'} Digital Dining
+              {tenant?.brandName || 'Foodie'} Counter Pickup
             </h1>
             <p className="text-xs text-stone-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
-              Scan the physical QR code on your dining table, or choose your table below to launch an encrypted dining session:
+              Quick Service Restaurant (QSR) Virtual Kiosk. Order on your phone, receive an instant Token #, and pick up your hot food at the counter.
             </p>
           </div>
+
+          {/* Primary Action: 1-Click Counter Pickup */}
+          <button
+            disabled={activatingTable !== null}
+            onClick={() => handleSelectTable('KIOSK')}
+            className="w-full py-4 px-6 rounded-2xl bg-[#D9480F] hover:bg-[#C23E0A] text-white font-black text-sm flex items-center justify-center gap-3 shadow-md hover:shadow-lg active:scale-98 transition mb-6"
+          >
+            {activatingTable === 'KIOSK' ? (
+              <RefreshCw className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                <span>Start Counter Pickup Order →</span>
+              </>
+            )}
+          </button>
 
           {/* Security Notice */}
           <div className="bg-orange-50/70 border border-orange-200/80 rounded-2xl p-3.5 mb-6 flex items-start gap-3">
             <ShieldCheck className="w-5 h-5 text-[#D9480F] shrink-0 mt-0.5" />
             <div className="text-[11px] text-[#1F2937] leading-relaxed">
-              <strong className="text-[#D9480F]">Anti-Tamper Table Verification:</strong> Each table generates a 32-byte AES-256-GCM encrypted token. Orders are strictly locked to the verified table.
+              <strong className="text-[#D9480F]">Digital Token System:</strong> Orders generate a sequential pickup token (e.g. #1042) displayed live on the kitchen & dining TV board.
             </div>
           </div>
 
-          {/* Table Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-            {DEMO_TABLES.map((tbl) => (
-              <button
-                key={tbl.number}
-                disabled={activatingTable !== null}
-                onClick={() => handleSelectTable(tbl.number)}
-                className="group border border-stone-200/80 hover:border-[#D9480F] rounded-2xl p-3.5 text-left bg-stone-50/50 hover:bg-orange-50/20 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xl">{tbl.icon}</span>
-                  <span className="text-[10px] font-bold text-stone-400 font-mono">
-                    {tbl.capacity} Seats
-                  </span>
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-[#1F2937] group-hover:text-[#D9480F] transition-colors">
-                    Table #{tbl.number}
+          {/* Optional Table Grid for Dine-In Counter Service */}
+          <div className="border-t border-stone-200/80 pt-4">
+            <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-3 text-center">
+              Or Select Table / Seating Area
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {DEMO_TABLES.map((tbl) => (
+                <button
+                  key={tbl.number}
+                  disabled={activatingTable !== null}
+                  onClick={() => handleSelectTable(tbl.number)}
+                  className="border border-stone-200/80 hover:border-[#D9480F] rounded-xl p-2.5 text-left bg-stone-50/50 hover:bg-orange-50/20 transition-all shadow-2xs flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-base">{tbl.icon}</span>
+                    <span className="text-[9px] font-bold text-stone-400 font-mono">
+                      #{tbl.number}
+                    </span>
+                  </div>
+                  <p className="font-bold text-xs text-[#1F2937] truncate">
+                    {tbl.zone}
                   </p>
-                  <p className="text-[10px] text-stone-500 mt-0.5 truncate">{tbl.zone}</p>
-                </div>
-                <div className="mt-3 text-[10px] font-bold text-[#D9480F] flex items-center gap-1 opacity-80 group-hover:opacity-100">
-                  {activatingTable === tbl.number ? (
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <span>Dine Here →</span>
-                  )}
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <p className="text-center text-[10px] text-stone-400">
-            Powered by generic multi-tenant restaurant OS
+          <p className="text-center text-[10px] text-stone-400 mt-5">
+            LOC QR Restaurant Management System • QSR Edition
           </p>
         </div>
       </div>
@@ -303,9 +316,13 @@ export default function QROrderingView() {
             </h1>
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#D9480F]">
               <Lock className="w-3 h-3 text-[#D9480F]" />
-              <span>Table #{session?.table?.number || '01'}</span>
+              <span>
+                {session?.table?.number === 'KIOSK'
+                  ? 'Counter Pickup (Virtual Kiosk)'
+                  : `Table #${session?.table?.number || '01'} (Pickup)`}
+              </span>
               <span className="text-stone-300">•</span>
-              <span className="text-stone-500 text-[10px]">Session Verified</span>
+              <span className="text-stone-500 text-[10px]">Verified Session</span>
             </div>
           </div>
         </div>
@@ -313,13 +330,13 @@ export default function QROrderingView() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              if (confirm('Switch dining table? This will reset your current table session.')) {
+              if (confirm('Start a new session or switch counter?')) {
                 clearSession();
               }
             }}
             className="text-[11px] font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-xl border border-stone-200/80 bg-white/60 hover:bg-stone-50 transition"
           >
-            Switch Table
+            Reset
           </button>
 
           {totalCartCount > 0 && (
@@ -450,8 +467,15 @@ export default function QROrderingView() {
       {activeOrderId && (
         <QROrderTracker
           orderId={activeOrderId}
-          onClose={() => setActiveOrderId(null)}
-          onNewOrder={() => setActiveOrderId(null)}
+          initialOrder={activeOrder}
+          onClose={() => {
+            setActiveOrderId(null);
+            setActiveOrder(null);
+          }}
+          onNewOrder={() => {
+            setActiveOrderId(null);
+            setActiveOrder(null);
+          }}
         />
       )}
     </div>

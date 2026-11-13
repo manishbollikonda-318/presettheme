@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generate, verify, revoke, list, getDemoSession } from './qr.controller.js';
+import { generate, verify, revoke, list, getDemoSession, getKioskSession } from './qr.controller.js';
 import { validateBody } from '../../middleware/validateBody.js';
 import { generateQRSchema } from './qr.schema.js';
 import { authenticateStaff } from '../../middleware/authenticate.js';
@@ -8,7 +8,20 @@ import { qrVerifyLimiter } from '../../middleware/rateLimiter.js';
 
 const router = Router();
 
-// GET /qr/demo/:tableNumber — Obtain verified guest session for demo testing
+// GET /qr/kiosk & /qr/demo — Obtain verified virtual kiosk session for QSR counter pickup
+router.get(
+  '/kiosk',
+  qrVerifyLimiter,
+  getKioskSession
+);
+
+router.get(
+  '/demo',
+  qrVerifyLimiter,
+  getKioskSession
+);
+
+// GET /qr/demo/:tableNumber — Obtain verified guest session (backward compatible)
 router.get(
   '/demo/:tableNumber',
   qrVerifyLimiter,

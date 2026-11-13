@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Hexagon,
   X,
+  Tv,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { key: 'pos', label: 'Point of Sale', icon: Store, path: '/pos' },
   { key: 'dining', label: 'Dining Area', icon: UtensilsCrossed, path: '/dining' },
   { key: 'orders', label: 'Order Queue', icon: ClipboardList, path: '/orders', badge: true },
+  { key: 'tv', label: 'TV Pickup Board', icon: Tv, path: '/pickup-board' },
   { key: 'promo', label: 'Promo & Discounts', icon: TicketPercent, path: '/promo' },
   { key: 'staff', label: 'Staff & Roles', icon: Users, path: '/staff' },
   { key: 'customers', label: 'Customer List', icon: BookUser, path: '/customers' },

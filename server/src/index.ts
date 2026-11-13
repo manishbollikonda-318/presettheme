@@ -58,14 +58,21 @@ app.get('/', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', service: 'Smart QR Restaurant API' });
 });
 
-// API Routes
-app.use('/auth', authRoutes);
-app.use('/qr', qrRoutes);
-app.use('/menu', menuRoutes);
-app.use('/orders', ordersRoutes);
-app.use('/tables', tablesRoutes);
-app.use('/transactions', transactionsRoutes);
-app.use('/tenants', tenantsRoutes);
+// API Routes (mounted with and without /api prefix for proxy resilience)
+const routeModules: [string, express.Router][] = [
+  ['/auth', authRoutes],
+  ['/qr', qrRoutes],
+  ['/menu', menuRoutes],
+  ['/orders', ordersRoutes],
+  ['/tables', tablesRoutes],
+  ['/transactions', transactionsRoutes],
+  ['/tenants', tenantsRoutes],
+];
+
+for (const [routePath, routeHandler] of routeModules) {
+  app.use(routePath, routeHandler);
+  app.use(`/api${routePath}`, routeHandler);
+}
 
 // Default Deny 404 handler for undefined endpoints
 app.use((req: Request, _res: Response, next: NextFunction) => {

@@ -1,10 +1,26 @@
 import type { Request, Response, NextFunction } from 'express';
-import { generateQRToken, verifyQRToken, revokeQRToken, listActiveTokens, getDemoTableSession } from './qr.service.js';
+import { 
+  generateQRToken, 
+  verifyQRToken, 
+  revokeQRToken, 
+  listActiveTokens, 
+  getDemoTableSession,
+  getVirtualKioskSession 
+} from './qr.service.js';
 import type { StaffTokenPayload } from '../../shared/jwt.js';
+
+export async function getKioskSession(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const session = await getVirtualKioskSession();
+    res.status(200).json(session);
+  } catch (err) {
+    next(err);
+  }
+}
 
 export async function getDemoSession(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tableNumber = String(req.params.tableNumber);
+    const tableNumber = req.params.tableNumber ? String(req.params.tableNumber) : 'KIOSK';
     const session = await getDemoTableSession(tableNumber);
     res.status(200).json(session);
   } catch (err) {

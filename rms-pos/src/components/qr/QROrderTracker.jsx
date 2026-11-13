@@ -1,18 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../../api/client';
-import { CheckCircle2, Flame, Bell, Clock, RefreshCw, ChefHat, Sparkles } from 'lucide-react';
+import { CheckCircle2, Flame, Bell, Clock, RefreshCw, ChefHat, Sparkles, ShoppingBag } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 
-export function QROrderTracker({ orderId, onClose, onNewOrder }) {
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function QROrderTracker({ orderId, initialOrder = null, onClose, onNewOrder }) {
+  const [order, setOrder] = useState(initialOrder);
+  const [loading, setLoading] = useState(!initialOrder);
   const [error, setError] = useState(null);
+  const hasVibratedRef = useRef(false);
 
   const fetchStatus = async () => {
     try {
       const data = await apiRequest(`/orders/${orderId}`);
       if (data && data.order) {
         setOrder(data.order);
+        if (data.order.status === 'ready' && !hasVibratedRef.current) {
+          hasVibratedRef.current = true;
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]);
+          }
+        }
       }
     } catch (err) {
       setError(err.message || 'Could not fetch order status');
@@ -23,75 +30,107 @@ export function QROrderTracker({ orderId, onClose, onNewOrder }) {
 
   useEffect(() => {
     fetchStatus();
-    // Poll every 5 seconds for status changes
-    const interval = setInterval(fetchStatus, 5000);
+    const interval = setInterval(fetchStatus, 4000);
     return () => clearInterval(interval);
   }, [orderId]);
 
   const status = (order?.status || 'new').toLowerCase();
+  const tokenNumber = order?.order_number || `#${orderId.slice(0, 6)}`;
 
   const steps = [
-    { key: 'new', label: 'Received', desc: 'Ticket logged in queue' },
-    { key: 'cooking', label: 'Preparing', desc: 'Chef is crafting your order' },
-    { key: 'ready', label: 'Ready', desc: 'Ready for table service' },
-    { key: 'completed', label: 'Served', desc: 'Enjoy your meal!' },
+    { key: 'new', label: 'Received' },
+    { key: 'cooking', label: 'Preparing' },
+    { key: 'ready', label: 'Ready for Pickup' },
+    { key: 'completed', label: 'Collected' },
   ];
 
   const currentStepIdx = steps.findIndex((s) => s.key === status);
 
   return (
     <div className="fixed inset-0 z-50 bg-[#FAF9F6] flex flex-col overflow-y-auto animate-in fade-in duration-200 font-sans">
-      {/* Header */}
+      {/* Sticky Header */}
       <header className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-stone-200/80 flex items-center justify-between sticky top-0 z-10 shadow-2xs">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-2xl bg-orange-100 flex items-center justify-center text-[#D9480F] shadow-xs">
-            <ChefHat className="w-4 h-4" />
+            <ChefHat className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-bold text-[#1F2937] text-base">Live Order Status</h1>
-            <p className="text-[11px] font-semibold text-[#D9480F]">
-              {order ? `Ticket ${order.order_number || `#${orderId.slice(0, 6)}`}` : 'Connecting...'}
-            </p>
+            <h1 className="font-bold text-[#1F2937] text-base">Counter Pickup Ticket</h1>
+            <p className="text-[11px] font-semibold text-[#D9480F]">Quick Service Restaurant (QSR)</p>
           </div>
         </div>
 
         <button
           onClick={fetchStatus}
           className="p-2 rounded-xl bg-stone-100 text-stone-600 hover:text-stone-900 transition active:scale-95"
-          title="Refresh"
+          title="Refresh Status"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </header>
 
-      {/* Main Status Feed */}
+      {/* Main Content */}
       <main className="p-6 flex-1 max-w-lg mx-auto w-full space-y-6">
-        {/* Progress Card */}
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-stone-200/80 shadow-sm text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-orange-50 text-[#D9480F] flex items-center justify-center mb-3 shadow-xs">
-            {status === 'cooking' ? (
-              <Flame className="w-8 h-8 animate-pulse text-amber-500" />
-            ) : status === 'ready' ? (
-              <Bell className="w-8 h-8 animate-bounce text-emerald-600" />
-            ) : status === 'completed' ? (
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-            ) : (
-              <Clock className="w-8 h-8 text-[#D9480F]" />
-            )}
+        {/* Massive Centered Token Box */}
+        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 border border-stone-200/80 shadow-md text-center relative overflow-hidden">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-stone-400">
+            YOUR PICKUP TOKEN
           </div>
 
-          <h2 className="text-xl font-bold text-[#1F2937] capitalize">
-            {status === 'cooking' ? 'Preparing Your Bites' : status === 'ready' ? 'Order Is Ready!' : status === 'completed' ? 'Order Completed' : 'Order Received'}
-          </h2>
-          <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto leading-relaxed">
-            {status === 'cooking'
-              ? 'Our kitchen team has fired up your ticket. Estimated prep time: ~10-15 mins.'
-              : status === 'ready'
-              ? 'Your order is plated and on its way to your table.'
-              : status === 'completed'
-              ? 'Hope you had a wonderful dining experience!'
-              : 'Your ticket has reached the kitchen display screen.'}
+          <div className="text-6xl sm:text-7xl font-black font-mono tracking-tight text-[#D9480F] my-3 select-all">
+            {tokenNumber}
+          </div>
+
+          <p className="text-xs text-stone-500 font-medium">
+            Please watch the counter TV display board for this number.
           </p>
+
+          {/* Dynamic Status Callout */}
+          <div className="mt-6">
+            {status === 'ready' && (
+              <div className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-500/80 text-emerald-950 flex flex-col items-center gap-2 animate-pulse shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md animate-bounce">
+                  <Bell className="w-6 h-6 stroke-[2.5]" />
+                </div>
+                <div className="text-lg font-black tracking-tight text-emerald-800">
+                  Ready for Pickup!
+                </div>
+                <p className="text-xs font-semibold text-emerald-700 max-w-xs leading-relaxed">
+                  Please show this token and collect your fresh order at the counter.
+                </p>
+              </div>
+            )}
+
+            {status === 'cooking' && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 flex items-center justify-center gap-3">
+                <Flame className="w-6 h-6 text-amber-500 animate-pulse shrink-0" />
+                <div className="text-left">
+                  <p className="text-sm font-bold text-amber-900">Preparing your food...</p>
+                  <p className="text-[11px] text-amber-700">The kitchen team is currently cooking your items.</p>
+                </div>
+              </div>
+            )}
+
+            {status === 'new' && (
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 text-stone-900 flex items-center justify-center gap-3">
+                <Clock className="w-6 h-6 text-[#D9480F] shrink-0" />
+                <div className="text-left">
+                  <p className="text-sm font-bold text-stone-800">Order Received</p>
+                  <p className="text-[11px] text-stone-500">Queued in kitchen queue. Cooking will begin shortly.</p>
+                </div>
+              </div>
+            )}
+
+            {status === 'completed' && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
+                <div className="text-left">
+                  <p className="text-sm font-bold text-emerald-900">Order Completed & Collected</p>
+                  <p className="text-[11px] text-emerald-700">Thank you for dining with us!</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Stepper Progress */}
           <div className="mt-8 relative flex justify-between items-center px-4">
@@ -129,10 +168,10 @@ export function QROrderTracker({ orderId, onClose, onNewOrder }) {
           </div>
         </div>
 
-        {/* Order Items Breakdown */}
+        {/* Order Breakdown */}
         {order && (
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-stone-200/80 shadow-sm space-y-4">
-            <h3 className="font-bold text-[#1F2937] text-sm">Ticket Details</h3>
+            <h3 className="font-bold text-[#1F2937] text-sm">Receipt Summary</h3>
 
             <div className="space-y-2.5">
               {order.items?.map((item, idx) => (
@@ -168,29 +207,31 @@ export function QROrderTracker({ orderId, onClose, onNewOrder }) {
                 </div>
               )}
               <div className="flex justify-between font-bold text-[#1F2937] text-sm pt-2 border-t border-stone-100">
-                <span>Total Amount</span>
+                <span>Total Amount Paid</span>
                 <span className="font-mono text-base text-[#D9480F]">{formatCurrency(order.total)}</span>
               </div>
             </div>
           </div>
         )}
 
+        {/* Action Buttons */}
         <div className="pt-2 flex gap-3">
           <button
             onClick={onNewOrder}
-            className="flex-1 py-3 px-4 bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold text-xs rounded-2xl shadow-sm transition active:scale-98"
+            className="flex-1 py-3.5 px-4 bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold text-xs rounded-2xl shadow-sm transition active:scale-98"
           >
             Order More Items
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-2xl transition"
+            className="px-5 py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-2xl transition"
           >
-            Close View
+            Close
           </button>
         </div>
       </main>
     </div>
   );
 }
+
 export default QROrderTracker;

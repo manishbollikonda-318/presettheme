@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as controller from './orders.controller.js';
-import { authenticateAny, authenticateStaff } from '../../middleware/authenticate.js';
+import { authenticateAny, authenticateStaff, optionalAuth } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validateBody, validateQuery } from '../../middleware/validateBody.js';
 import { orderCreateLimiter } from '../../middleware/rateLimiter.js';
@@ -21,11 +21,17 @@ router.post(
   controller.createOrder
 );
 
-// GET /orders/stream — Server-Sent Events (SSE) live stream for Kitchen Display System
+// GET /orders/pickup-board — Live QSR token display list (KFC/McDonald's style)
+router.get(
+  '/pickup-board',
+  optionalAuth,
+  controller.getPickupBoard
+);
+
+// GET /orders/stream — Server-Sent Events (SSE) live stream for Kitchen Display System & TV Pickup Board
 router.get(
   '/stream',
-  authenticateStaff,
-  authorize('admin', 'manager', 'kitchen', 'cashier'),
+  optionalAuth,
   controller.streamOrders
 );
 

@@ -19,9 +19,10 @@ export function QRCartDrawer({
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Dynamic calculations driven strictly by tenant context
+  // Dynamic calculations driven strictly by tenant context (Service charge waived for counter pickup)
   const taxRate = tenant?.taxPercent ?? 5.0;
-  const serviceRate = tenant?.serviceChargePercent ?? 0.0;
+  const isTakeaway = true;
+  const serviceRate = isTakeaway ? 0.0 : (tenant?.serviceChargePercent ?? 0.0);
   const tax = (subtotal * taxRate) / 100;
   const serviceCharge = (subtotal * serviceRate) / 100;
   const total = subtotal + tax + serviceCharge;
@@ -42,10 +43,10 @@ export function QRCartDrawer({
               <ShoppingBag className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-[#1F2937] text-base">Your Table Order</h2>
+              <h2 className="font-bold text-[#1F2937] text-base">Counter Pickup Order</h2>
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#D9480F]">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#D9480F]" />
-                <span>Locked to Table #{tableNumber}</span>
+                <span>Virtual Kiosk • Token Pickup</span>
               </div>
             </div>
           </div>
@@ -170,10 +171,10 @@ export function QRCartDrawer({
               className="w-full py-3.5 px-6 rounded-2xl bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-98 transition disabled:opacity-50"
             >
               {isSubmitting ? (
-                <span>Dispatching Order...</span>
+                <span>Generating Pickup Token...</span>
               ) : (
                 <>
-                  <span>Send Ticket to Kitchen ({formatCurrency(total)})</span>
+                  <span>Confirm & Get Pickup Token ({formatCurrency(total)})</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

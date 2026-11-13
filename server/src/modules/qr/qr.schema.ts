@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 export const generateQRSchema = z.object({
-  table_id: z.string().uuid(),
+  table_id: z.string().uuid().optional(),
+  outlet_id: z.string().uuid().optional(),
   ttl_hours: z.number().int().min(1).max(720).optional().default(24),
 });
 

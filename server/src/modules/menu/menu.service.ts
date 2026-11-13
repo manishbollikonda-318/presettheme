@@ -42,7 +42,7 @@ const FALLBACK_CATEGORIES: CategoryRow[] = [
 
 const FALLBACK_ITEMS: MenuItemRow[] = [
   {
-    id: 'm1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01',
+    id: 'd1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01',
     tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     category_id: 'b1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01',
     name: 'Grilled Teriyaki Bowl',
@@ -57,7 +57,7 @@ const FALLBACK_ITEMS: MenuItemRow[] = [
     updated_at: new Date().toISOString(),
   },
   {
-    id: 'm1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02',
+    id: 'd1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02',
     tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     category_id: 'b1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02',
     name: 'Creamy Truffle Penne',
@@ -72,7 +72,7 @@ const FALLBACK_ITEMS: MenuItemRow[] = [
     updated_at: new Date().toISOString(),
   },
   {
-    id: 'm1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03',
+    id: 'd1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03',
     tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     category_id: 'b1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03',
     name: 'Artisanal Cold Brew',
@@ -87,7 +87,7 @@ const FALLBACK_ITEMS: MenuItemRow[] = [
     updated_at: new Date().toISOString(),
   },
   {
-    id: 'm1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04',
+    id: 'd1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04',
     tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     category_id: 'b1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04',
     name: 'Warm Molten Lava Cake',

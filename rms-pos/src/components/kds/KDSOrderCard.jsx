@@ -6,34 +6,32 @@ export function KDSOrderCard({ order, onUpdateStatus }) {
   const isNew = order.status === 'new' || order.status === 'New';
 
   const orderNumber = order.order_number || order.orderId || '#0000';
-  const tableDisplay = order.table_number || order.tableNumber ? `TABLE ${order.table_number || order.tableNumber}` : (order.order_type || order.orderType || 'DINE-IN').toUpperCase();
-  const isTakeaway = tableDisplay.includes('TAKEAWAY');
+  const isTakeaway = (order.order_type || order.orderType || 'takeaway').toLowerCase() === 'takeaway';
 
   return (
     <div className="bg-[#1A1D27] border-2 border-[#2A2D3A] hover:border-amber-500/50 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-200">
-      {/* Card Header */}
+      {/* Card Header: Prominent Pickup Token # */}
       <div className="p-4 border-b border-[#2A2D3A] bg-[#141720]">
-        <div className="flex items-center justify-between mb-3">
-          <span className="font-mono text-2xl font-black text-slate-100 tracking-tight">
-            {orderNumber}
-          </span>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">
+              PICKUP TOKEN
+            </div>
+            <span className="font-mono text-3xl font-black text-white tracking-tight">
+              {orderNumber}
+            </span>
+          </div>
           <KDSTimer createdAt={order.created_at || order.createdAt} />
         </div>
 
-        {/* Table & Type Badge */}
+        {/* Pickup / QSR Type Badge & Customer Name */}
         <div className="flex items-center gap-2">
-          <span
-            className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider ${
-              isTakeaway
-                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-            }`}
-          >
-            {tableDisplay}
+          <span className="px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider bg-orange-500/20 text-[#D9480F] border border-orange-500/30">
+            {isTakeaway ? 'COUNTER PICKUP' : 'EXPRESS ORDER'}
           </span>
           {order.customer_name || order.customerName ? (
-            <span className="text-xs text-slate-400 font-semibold truncate">
-              {order.customer_name || order.customerName}
+            <span className="text-xs text-slate-300 font-semibold truncate bg-slate-800/80 px-2 py-0.5 rounded-md">
+              👤 {order.customer_name || order.customerName}
             </span>
           ) : null}
         </div>

@@ -49,12 +49,13 @@ export function QRSessionProvider({ children }) {
     }
   }, []);
 
-  // Activate a cryptographically verified demo table session (e.g. Table 01-06)
-  const activateDemoTable = useCallback(async (tableNumber = '01') => {
+  // Activate a cryptographically verified demo table or virtual kiosk session
+  const activateDemoTable = useCallback(async (tableNumber = 'KIOSK') => {
     setIsVerifying(true);
     setError(null);
     try {
-      const data = await apiRequest(`/qr/demo/${encodeURIComponent(tableNumber)}`);
+      const endpoint = tableNumber === 'KIOSK' ? '/qr/kiosk' : `/qr/demo/${encodeURIComponent(tableNumber)}`;
+      const data = await apiRequest(endpoint);
       setToken(data.access_token);
       setSession(data);
       sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
@@ -66,7 +67,7 @@ export function QRSessionProvider({ children }) {
       const fallbackSession = {
         access_token: `demo-guest-token-${tableNumber}`,
         tenant_name: 'Foodie Bistro',
-        table: { number: String(tableNumber).padStart(2, '0'), id: `tbl-${tableNumber}` },
+        table: { number: tableNumber === 'KIOSK' ? 'KIOSK' : String(tableNumber).padStart(2, '0'), id: `tbl-${tableNumber}` },
       };
       setToken(fallbackSession.access_token);
       setSession(fallbackSession);

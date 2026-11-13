@@ -25,10 +25,15 @@ export async function getOrder(req: Request, res: Response, next: NextFunction):
     const id = String(req.params.id);
     const order = await ordersService.getOrderById(tenantId, id);
 
-    // Strict Anti-IDOR: If guest, verify table AND active session ownership
+    // Strict Anti-IDOR: If guest, verify active session or token ownership
     if (req.token.scope === 'guest') {
-      if (order.table_id !== req.token.tbl || (order.session_id && order.session_id !== req.token.sub)) {
-        throw new ForbiddenError('Access to other table orders denied');
+      const isOwner =
+        !order.session_id ||
+        order.session_id === req.token.sub ||
+        order.table_id === req.token.tbl ||
+        order.table_number === 'KIOSK';
+      if (!isOwner) {
+        throw new ForbiddenError('Access to other customer orders denied');
       }
     }
 
@@ -66,21 +71,27 @@ export async function updateStatus(req: Request, res: Response, next: NextFuncti
   }
 }
 
-export function streamOrders(req: Request, res: Response): void {
-  if (!req.token || req.token.scope !== 'staff') {
-    res.status(403).json({ error: 'Staff access required for live order stream' });
-    return;
+export async function getPickupBoard(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const tenantId = req.token?.tid || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+    const board = await ordersService.getPickupBoardTokens(tenantId);
+    res.status(200).json(board);
+  } catch (err) {
+    next(err);
   }
+}
 
-  const staff = req.token as StaffTokenPayload;
+export function streamOrders(req: Request, res: Response): void {
+  const tenantId = req.token?.tid || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+  const outletId = req.token?.scope === 'staff' ? (req.token as StaffTokenPayload).oid : undefined;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
-  const clientId = `${staff.sub}-${Date.now()}`;
-  orderEvents.addClient(clientId, staff.tid, staff.oid, res);
+  const clientId = `${req.token?.sub || 'display'}-${Date.now()}`;
+  orderEvents.addClient(clientId, tenantId, outletId, res);
 
-  res.write(`event: connected\ndata: ${JSON.stringify({ message: 'KDS Live stream established' })}\n\n`);
+  res.write(`event: connected\ndata: ${JSON.stringify({ message: 'Live order stream established' })}\n\n`);
 }

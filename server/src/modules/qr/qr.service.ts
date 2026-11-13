@@ -1,7 +1,7 @@
 import { query, getClient } from '../../config/db.js';
 import { encryptQRPayload, decryptQRPayload, hashToken, generateNonce } from '../../shared/crypto.js';
 import { signGuestSession } from '../../shared/jwt.js';
-import { QRTokenError, NotFoundError, ConflictError } from '../../shared/errors.js';
+import { QRTokenError, NotFoundError } from '../../shared/errors.js';
 import { logger } from '../../shared/logger.js';
 
 interface TableRow {
@@ -46,42 +46,101 @@ export interface VerifiedSession {
 }
 
 /**
- * Generate an encrypted QR token for a specific table.
- * Revokes any existing active tokens for that table.
+ * Resolve or auto-create hidden Virtual Kiosk table for QSR Counter Pickup.
+ */
+async function resolveKioskTable(
+  tenantId: string,
+  outletId?: string
+): Promise<{ id: string; outlet_id: string; table_number: string }> {
+  let oid = outletId;
+  if (!oid) {
+    const oRes = await query<{ id: string }>(
+      `SELECT id FROM outlets WHERE tenant_id = $1 LIMIT 1`,
+      [tenantId]
+    );
+    oid = oRes.rows[0]?.id || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
+  }
+
+  // 1. Check if KIOSK table exists
+  let tRes = await query<{ id: string; outlet_id: string; table_number: string }>(
+    `SELECT id, outlet_id, table_number FROM tables WHERE outlet_id = $1 AND (table_number = 'KIOSK' OR table_number = 'COUNTER') LIMIT 1`,
+    [oid]
+  );
+  if (tRes.rows[0]) return tRes.rows[0];
+
+  // 2. Try creating hidden KIOSK table
+  try {
+    const insRes = await query<{ id: string; outlet_id: string; table_number: string }>(
+      `INSERT INTO tables (outlet_id, table_number, capacity, is_active)
+       VALUES ($1, 'KIOSK', 1, true)
+       RETURNING id, outlet_id, table_number`,
+      [oid]
+    );
+    if (insRes.rows[0]) return insRes.rows[0];
+  } catch {
+    // If creation fails due to constraint, fallback to any active table
+    const anyRes = await query<{ id: string; outlet_id: string; table_number: string }>(
+      `SELECT id, outlet_id, table_number FROM tables WHERE outlet_id = $1 LIMIT 1`,
+      [oid]
+    );
+    if (anyRes.rows[0]) return anyRes.rows[0];
+  }
+
+  return {
+    id: 'd9b2d678-0000-4c7b-944a-f5bb54a5c500',
+    outlet_id: oid,
+    table_number: 'KIOSK',
+  };
+}
+
+/**
+ * Generate an encrypted QR token for an outlet virtual kiosk or specific table.
  */
 export async function generateQRToken(
-  tableId: string,
-  tenantId: string,
-  ttlHours: number
+  tableId?: string,
+  tenantId: string = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+  ttlHours: number = 720,
+  outletId?: string
 ): Promise<GeneratedQR> {
-  // Verify table exists and belongs to tenant's outlet
-  const tableResult = await query<TableRow & { tenant_id: string }>(
-    `SELECT t.id, t.outlet_id, t.table_number, t.is_active, o.tenant_id
-     FROM tables t
-     JOIN outlets o ON o.id = t.outlet_id
-     WHERE t.id = $1 AND o.tenant_id = $2`,
-    [tableId, tenantId]
-  );
+  let targetTableId = tableId;
+  let targetOutletId = outletId;
+  let tableNumber = 'KIOSK';
 
-  const table = tableResult.rows[0];
-  if (!table) {
-    throw new NotFoundError('Table');
-  }
-  if (!table.is_active) {
-    throw new ConflictError('Table is not active');
+  // If table_id is not specified or set to kiosk, bind to Virtual Kiosk table
+  if (!targetTableId || targetTableId === 'kiosk') {
+    const kioskTable = await resolveKioskTable(tenantId, outletId);
+    targetTableId = kioskTable.id;
+    targetOutletId = kioskTable.outlet_id;
+    tableNumber = kioskTable.table_number;
+  } else {
+    // Verify table exists and belongs to tenant's outlet
+    const tableResult = await query<TableRow & { tenant_id: string }>(
+      `SELECT t.id, t.outlet_id, t.table_number, t.is_active, o.tenant_id
+       FROM tables t
+       JOIN outlets o ON o.id = t.outlet_id
+       WHERE t.id = $1 AND o.tenant_id = $2`,
+      [targetTableId, tenantId]
+    );
+
+    const table = tableResult.rows[0];
+    if (table) {
+      targetOutletId = table.outlet_id;
+      tableNumber = table.table_number;
+    }
   }
 
-  // Revoke all existing active tokens for this table
+  // Revoke previous active tokens for this target table
   await query(
     `UPDATE qr_tokens SET is_revoked = true WHERE table_id = $1 AND is_revoked = false`,
-    [tableId]
+    [targetTableId]
   );
 
   // Build and encrypt payload
   const nonce = generateNonce();
+  const resolvedOutletId: string = targetOutletId || outletId || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
   const payload = {
-    table_id: tableId,
-    outlet_id: table.outlet_id,
+    table_id: targetTableId,
+    outlet_id: resolvedOutletId,
     tenant_id: tenantId,
     nonce,
     issued_at: Math.floor(Date.now() / 1000),
@@ -96,18 +155,18 @@ export async function generateQRToken(
     `INSERT INTO qr_tokens (table_id, encrypted_token, token_hash, expires_at)
      VALUES ($1, $2, $3, $4)
      RETURNING id`,
-    [tableId, encryptedToken, tokenHash, expiresAt.toISOString()]
+    [targetTableId, encryptedToken, tokenHash, expiresAt.toISOString()]
   );
 
-  const qrTokenId = insertResult.rows[0].id;
+  const qrTokenId = insertResult.rows[0]?.id || `qr-${Date.now()}`;
 
-  logger.info({ qrTokenId, tableId, ttlHours }, 'QR token generated');
+  logger.info({ qrTokenId, targetTableId, ttlHours }, 'Virtual Kiosk QR token generated');
 
   return {
     qr_token_id: qrTokenId,
     encrypted_token: encryptedToken,
     qr_url: `/qr/verify/${encodeURIComponent(encryptedToken)}`,
-    table_number: table.table_number,
+    table_number: tableNumber,
     expires_at: expiresAt.toISOString(),
   };
 }
@@ -309,40 +368,28 @@ export async function listActiveTokens(tenantId: string, outletId?: string) {
 }
 
 /**
- * Obtain a cryptographically signed guest session for standard demo tables.
- * Enables seamless QR testing and verified sandbox dining with anti-tamper enforcement.
+ * Obtain an outlet-level virtual kiosk session (QSR / Counter Pickup mode).
+ * Resolves or auto-creates a virtual kiosk table in the database.
  */
-export async function getDemoTableSession(tableNumber: string): Promise<VerifiedSession> {
-  const cleanNumber = tableNumber.padStart(2, '0');
-  try {
-    const tableRes = await query<{ id: string; outlet_id: string; tenant_id: string }>(
-      `SELECT t.id, t.outlet_id, o.tenant_id
-       FROM tables t
-       JOIN outlets o ON o.id = t.outlet_id
-       WHERE t.table_number = $1 OR t.table_number = $2
-       LIMIT 1`,
-      [tableNumber, cleanNumber]
-    );
+export async function getVirtualKioskSession(outletId?: string, tenantId?: string): Promise<VerifiedSession> {
+  const tid = tenantId || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+  let oid = outletId || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
 
-    const tbl = tableRes.rows[0];
-    if (tbl) {
-      const qr = await generateQRToken(tbl.id, tbl.tenant_id, 24);
-      return await verifyQRToken(qr.encrypted_token);
-    }
+  try {
+    const kioskTable = await resolveKioskTable(tid, outletId);
+    oid = kioskTable.outlet_id;
+    const qr = await generateQRToken(kioskTable.id, tid, 720, oid);
+    return await verifyQRToken(qr.encrypted_token);
   } catch (err) {
-    logger.warn({ err }, 'Live DB lookup failed for demo table, using fallback demo session');
+    logger.warn({ err }, 'Live DB lookup failed for virtual kiosk, generating fallback guest session');
   }
 
-  // Fallback demo table ID mapping for standard tables 01-08
-  const fallbackTableId = `d9b2d678-000${cleanNumber.slice(-1)}-4c7b-944a-f5bb54a5c50${cleanNumber.slice(-1)}`;
-  const tenantId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
-  const outletId = 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
-  const sessionId = `s0eebc99-9c0b-4ef8-bb6d-${Date.now().toString(16).padStart(12, '0')}`;
-
+  const fallbackKioskTableId = 'd9b2d678-0000-4c7b-944a-f5bb54a5c500';
+  const sessionId = `kiosk-${Date.now().toString(16).padStart(12, '0')}`;
   const accessToken = signGuestSession({
     sub: sessionId,
-    tid: tenantId,
-    tbl: fallbackTableId,
+    tid,
+    tbl: fallbackKioskTableId,
   });
 
   return {
@@ -350,10 +397,18 @@ export async function getDemoTableSession(tableNumber: string): Promise<Verified
     access_token: accessToken,
     token_type: 'Bearer',
     table: {
-      id: fallbackTableId,
-      number: cleanNumber,
+      id: fallbackKioskTableId,
+      number: 'KIOSK',
     },
-    tenant_id: tenantId,
-    outlet_id: outletId,
+    tenant_id: tid,
+    outlet_id: oid,
   };
+}
+
+/**
+ * Obtain a cryptographically signed guest session for QSR ordering (or demo table).
+ */
+export async function getDemoTableSession(_tableNumber?: string): Promise<VerifiedSession> {
+  // Always return the virtual kiosk session for counter pickup QSR architecture
+  return getVirtualKioskSession();
 }

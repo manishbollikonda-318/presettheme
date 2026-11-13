@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const orderItemInputSchema = z.object({
-  menu_item_id: z.string().uuid(),
+  menu_item_id: z.string().min(1).max(100),
   quantity: z.number().int().min(1).max(99),
   extras: z.array(z.string().trim().max(100)).max(10).optional().default([]),
   notes: z.string().trim().max(300).optional().default(''),

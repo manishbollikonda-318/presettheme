@@ -19,8 +19,11 @@ declare global {
 
 function extractBearer(req: Request): string | null {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  return authHeader.slice(7);
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+  if (req.query && typeof req.query.token === 'string') {
+    return req.query.token;
+  }
+  return null;
 }
 
 /**
