@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: free
     rootDir: server
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm run start
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
     healthCheckPath: /health
     autoDeploy: true
     envVars:

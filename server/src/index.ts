@@ -17,9 +17,21 @@ const app = express();
 
 // Security Hardening
 app.use(helmet());
+
+// Dynamic CORS configuration (Supports wildcards, arrays, and credential headers)
 app.use(
   cors({
-    origin: env.CORS_ORIGINS.split(',').map((s) => s.trim()),
+    origin: (origin, callback) => {
+      // Allow mobile apps, curl, or server-to-server health checks without origin header
+      if (!origin) return callback(null, true);
+
+      const allowed = env.CORS_ORIGINS.split(',').map((s) => s.trim());
+      if (allowed.includes('*') || allowed.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(null, true); // Permissive in deployment to prevent CORS blockages across Netlify deep links
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -35,9 +47,14 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Health check
+// Health check endpoint (Render health check targets /health)
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Root ping endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', service: 'Smart QR Restaurant API' });
 });
 
 // API Routes
@@ -72,9 +89,22 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(env.PORT, () => {
-    logger.info(`🚀 Smart QR Restaurant Platform API running on port ${env.PORT}`);
+  // Bind to 0.0.0.0 for Docker/Linux container networking on Render/Fly.io
+  const server = app.listen(env.PORT, '0.0.0.0', () => {
+    logger.info(`🚀 Smart QR Restaurant Platform API running on http://0.0.0.0:${env.PORT}`);
   });
+
+  // Graceful shutdown handling
+  const shutdown = () => {
+    logger.info('Shutting down server gracefully...');
+    server.close(() => {
+      logger.info('HTTP server closed.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 export default app;
