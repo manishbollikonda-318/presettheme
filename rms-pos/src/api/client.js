@@ -1,4 +1,14 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4321';
+const isBrowser = typeof window !== 'undefined';
+const isLocal =
+  isBrowser &&
+  (window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '0.0.0.0');
+
+// Production default points to the live Render backend, localhost when developing locally
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (isLocal ? 'http://localhost:4321' : 'https://loc-qr-api.onrender.com');
 
 export function getAuthToken() {
   try {
