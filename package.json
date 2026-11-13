@@ -1,0 +1,10 @@
+{
+  "name": "rms-pos-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix rms-pos run dev",
+    "build": "npm --prefix rms-pos run build",
+    "preview": "npm --prefix rms-pos run preview"
+  }
+}

@@ -1,0 +1,8 @@
+orders.json
+server/node_modules/
+server/dist/
+server/keys/
+server/.env
+rms-pos/node_modules/
+rms-pos/dist/
+.DS_Store
