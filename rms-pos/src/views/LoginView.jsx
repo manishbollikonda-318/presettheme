@@ -39,7 +39,7 @@ export default function LoginView() {
   };
 
   return (
-    <div className="h-screen w-screen flex bg-[#FAF9F6] text-[#1F2937] font-sans overflow-hidden">
+    <div className="min-h-screen w-full flex bg-[#FAF9F6] text-[#1F2937] font-sans overflow-x-hidden overflow-y-auto lg:h-screen lg:overflow-hidden">
       {/* Left side: Premium blurred cafe interior */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-stone-900 overflow-hidden select-none">
         <img
@@ -100,10 +100,10 @@ export default function LoginView() {
       </div>
 
       {/* Right side: Sleek glassmorphism login form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between items-center p-6 sm:p-12 overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 sm:p-12 overflow-y-auto">
         <div className="w-full max-w-md my-auto py-6">
           {/* Mobile Header Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
+          <div className="lg:hidden flex items-center gap-3 mb-6">
             <div className="w-12 h-12 rounded-2xl bg-[#D9480F] flex items-center justify-center text-white shadow-md">
               <Hexagon className="w-6 h-6" />
             </div>
@@ -114,7 +114,7 @@ export default function LoginView() {
           </div>
 
           {/* Glass Card */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-stone-200/80 p-8 shadow-sm space-y-6">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-stone-200/80 p-8 shadow-sm flex flex-col gap-5">
             <div>
               <h2 className="text-2xl font-bold text-[#1F2937] tracking-tight">Staff Sign In</h2>
               <p className="text-xs text-stone-500 mt-1">
@@ -128,7 +128,7 @@ export default function LoginView() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs font-semibold text-stone-700 mb-1.5 block">Staff Email</label>
                 <input

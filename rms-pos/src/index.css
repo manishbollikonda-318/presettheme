@@ -8,9 +8,7 @@
   --text-charcoal: #1F2937;
 }
 
-* {
-  margin: 0;
-  padding: 0;
+*, ::before, ::after {
   box-sizing: border-box;
 }
 
