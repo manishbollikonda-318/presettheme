@@ -10,6 +10,12 @@ export const orderItemInputSchema = z.object({
 export const createOrderSchema = z.object({
   order_type: z.enum(['dine_in', 'takeaway', 'delivery']).default('dine_in'),
   customer_name: z.string().trim().max(100).optional().default(''),
+  customer_phone: z
+    .string({ required_error: 'Customer phone number is mandatory for fraud prevention' })
+    .trim()
+    .min(10, { message: 'Customer phone number must contain at least 10 digits' })
+    .max(20, { message: 'Customer phone number is too long' })
+    .regex(/^[+]?[0-9\s\-()]{10,20}$/, { message: 'Invalid phone number format' }),
   table_id: z.string().uuid().optional(),
   outlet_id: z.string().uuid().optional(),
   promo_code: z.string().trim().max(30).optional(),

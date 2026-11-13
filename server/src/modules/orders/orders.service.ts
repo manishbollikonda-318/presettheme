@@ -16,6 +16,7 @@ export interface FullOrder {
   order_type: string;
   status: string;
   customer_name: string | null;
+  customer_phone: string | null;
   table_id: string | null;
   session_id?: string | null;
   table_number: string | null;
@@ -42,13 +43,19 @@ export interface FullOrder {
 }
 
 /**
- * Server-side creation of orders with strict price verification.
- * Client-submitted prices are completely ignored.
+ * Server-side creation of orders with strict price verification and fraud prevention.
+ * Requires validated customer_phone on every order.
  */
 export async function createOrder(
   auth: TokenPayload,
   input: CreateOrderInput
 ): Promise<FullOrder> {
+  // Fraud prevention: Strict customer phone enforcement
+  const phone = input.customer_phone ? input.customer_phone.trim() : '';
+  if (!phone || phone.length < 10) {
+    throw new ValidationError('A valid customer phone number (minimum 10 digits) is strictly mandatory to place an order.');
+  }
+
   let client;
   try {
     client = await getClient();
@@ -60,12 +67,13 @@ export async function createOrder(
     const fallbackOrder: FullOrder = {
       id: orderId,
       order_number: mockOrderNumber,
-      order_type: 'takeaway',
-      status: 'cooking',
-      customer_name: input.customer_name || 'Counter Guest',
+      order_type: 'dine_in',
+      status: 'new',
+      customer_name: input.customer_name || 'Dining Guest',
+      customer_phone: phone,
       table_id: auth.scope === 'guest' ? auth.tbl : null,
       session_id: auth.scope === 'guest' ? auth.sub : null,
-      table_number: 'KIOSK',
+      table_number: '01',
       outlet_id: 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531',
       tenant_id: auth.tid,
       subtotal: 12.99,
@@ -74,13 +82,13 @@ export async function createOrder(
       discount: 0,
       total: 13.64,
       promo_code: null,
-      notes: input.notes || null,
+      notes: `Phone: ${phone}${input.notes ? ` | Notes: ${input.notes}` : ''}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       items: input.items.map((it) => ({
         id: `item-${Date.now()}-${Math.random()}`,
         menu_item_id: it.menu_item_id,
-        name: 'Fresh Counter Bowl',
+        name: 'Artisanal Dish',
         unit_price: 12.99,
         quantity: it.quantity,
         extras: it.extras || [],
@@ -100,28 +108,36 @@ export async function createOrder(
     let tableId: string | null = null;
     let sessionId: string | null = null;
     let staffId: string | null = null;
-    let orderType = input.order_type || 'takeaway';
+    let orderType = input.order_type || 'dine_in';
 
     if (auth.scope === 'guest') {
-      // QSR Counter Pickup: Hardcode order_type to 'takeaway' for all QR-generated orders
-      orderType = 'takeaway';
+      // Table-Service QR Guest Order: strictly bound to scanned physical table and session
       tenantId = auth.tid;
       tableId = auth.tbl;
       sessionId = auth.sub;
+      orderType = 'dine_in';
 
       const sessionCheck = await client.query(
-        `SELECT s.id, t.outlet_id
+        `SELECT s.id, s.table_id, t.outlet_id, t.table_number
          FROM active_sessions s
          JOIN tables t ON t.id = s.table_id
          WHERE s.id = $1 AND s.status = 'active'`,
         [sessionId]
       );
+
       if (!sessionCheck.rows[0]) {
-        // Fallback for virtual kiosk session
-        const oRes = await client.query(`SELECT id FROM outlets WHERE tenant_id = $1 LIMIT 1`, [tenantId]);
-        outletId = oRes.rows[0]?.id || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
+        // Fallback check physical table directly if session is freshly synced
+        const tblCheck = await client.query(
+          `SELECT t.id, t.outlet_id, t.table_number FROM tables t WHERE t.id = $1`,
+          [tableId]
+        );
+        if (!tblCheck.rows[0]) {
+          throw new ConflictError('No active dining table session found. Please rescan your table QR code.');
+        }
+        outletId = tblCheck.rows[0].outlet_id;
       } else {
         outletId = sessionCheck.rows[0].outlet_id;
+        tableId = sessionCheck.rows[0].table_id;
       }
     } else if (auth.scope === 'staff') {
       // Staff order (POS / Waiter)
@@ -130,7 +146,7 @@ export async function createOrder(
       outletId = input.outlet_id || staffToken.oid;
       tableId = input.table_id || null;
       staffId = staffToken.sub;
-      orderType = input.order_type || 'takeaway';
+      orderType = input.order_type || 'dine_in';
 
       if (!outletId) {
         throw new ValidationError('outlet_id is required for staff orders');
@@ -217,7 +233,7 @@ export async function createOrder(
       }
     }
 
-    // 4. Calculate Financials (0 service charge for takeaway/QSR pickup)
+    // 4. Calculate Financials
     const serviceCharge = orderType === 'dine_in'
       ? Number(((subtotal * Number(service_charge_percent)) / 100).toFixed(2))
       : 0;
@@ -225,11 +241,14 @@ export async function createOrder(
     const tax = Number(((taxableAmount * Number(tax_percent)) / 100).toFixed(2));
     const total = Number((subtotal + serviceCharge + tax - discount).toFixed(2));
 
-    // 5. Generate Order Number (Pickup Token #)
+    // 5. Generate Order Number
     const seqRes = await client.query<{ nextval: string }>(`SELECT nextval('order_number_seq')`);
     const orderNumber = `#${seqRes.rows[0].nextval}`;
 
-    // 6. Insert Order
+    // Concatenate phone number into notes for DB resilience and kitchen visibility
+    const fullNotes = `[Phone: ${phone}]${input.notes ? ` ${input.notes}` : ''}`.slice(0, 500);
+
+    // 6. Insert Order into orders table
     const orderInsert = await client.query<{ id: string }>(
       `INSERT INTO orders (
         session_id, outlet_id, tenant_id, table_id, order_number,
@@ -252,7 +271,7 @@ export async function createOrder(
         discount,
         total,
         promoCode,
-        input.notes || null,
+        fullNotes,
         staffId,
       ]
     );
@@ -281,6 +300,7 @@ export async function createOrder(
     await client.query('COMMIT');
 
     const fullOrder = await getOrderById(tenantId, orderId);
+    fullOrder.customer_phone = phone;
 
     // Broadcast SSE to kitchen screens
     orderEvents.broadcast(tenantId, 'order.new', fullOrder, outletId);
@@ -351,8 +371,16 @@ export async function getOrderById(tenantId: string, orderId: string): Promise<F
       [orderId]
     );
 
+    // Extract customer_phone from notes format [Phone: ...] if stored
+    let extractedPhone: string | null = null;
+    if (ord.notes && ord.notes.includes('[Phone:')) {
+      const match = ord.notes.match(/\[Phone:\s*([^\]]+)\]/);
+      if (match) extractedPhone = match[1].trim();
+    }
+
     return {
       ...ord,
+      customer_phone: extractedPhone,
       subtotal: parseFloat(ord.subtotal),
       tax: parseFloat(ord.tax),
       service_charge: parseFloat(ord.service_charge),
@@ -369,12 +397,13 @@ export async function getOrderById(tenantId: string, orderId: string): Promise<F
     return {
       id: orderId,
       order_number: '#1042',
-      order_type: 'takeaway',
-      status: 'ready',
-      customer_name: 'Counter Guest',
-      table_id: 'd9b2d678-0000-4c7b-944a-f5bb54a5c500',
+      order_type: 'dine_in',
+      status: 'new',
+      customer_name: 'Dining Guest',
+      customer_phone: '9876543210',
+      table_id: 'd9b2d678-0000-4c7b-944a-f5bb54a5c501',
       session_id: null,
-      table_number: 'KIOSK',
+      table_number: '01',
       outlet_id: 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531',
       tenant_id: tenantId,
       subtotal: 12.99,
@@ -500,7 +529,7 @@ export async function updateOrderStatus(
 }
 
 /**
- * Retrieve active pickup board token numbers for QSR display (KFC / McDonald's style).
+ * Retrieve active order tokens for display boards.
  */
 export async function getPickupBoardTokens(
   tenantId: string = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
