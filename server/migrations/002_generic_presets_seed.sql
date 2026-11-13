@@ -48,7 +48,7 @@ VALUES
     'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531',
     'Store Manager',
     'admin@rms.io',
-    '$argon2id$v=19$m=65536,t=3,p=4$qFq8zYkU0bLzQxK8/NqP2g$G6O6bC5H8aKqZ3xX2bV8sL4dE6rT9yU0iO1pA3sD5fG',
+    '$argon2id$v=19$m=65536,t=3,p=4$of89opQS+BDt61vdco0bxQ$TDkpnpi3W2H2Cu3Ke+mPFswl8PlGEJUv4/Rzg73H104',
     'admin',
     'General Manager'
   ),
@@ -58,7 +58,7 @@ VALUES
     'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531',
     'Chef de Cuisine',
     'kitchen@rms.io',
-    '$argon2id$v=19$m=65536,t=3,p=4$qFq8zYkU0bLzQxK8/NqP2g$G6O6bC5H8aKqZ3xX2bV8sL4dE6rT9yU0iO1pA3sD5fG',
+    '$argon2id$v=19$m=65536,t=3,p=4$of89opQS+BDt61vdco0bxQ$TDkpnpi3W2H2Cu3Ke+mPFswl8PlGEJUv4/Rzg73H104',
     'kitchen',
     'Executive Head Chef'
   )
