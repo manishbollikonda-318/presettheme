@@ -26,6 +26,8 @@ function AppLayout() {
   const { user } = useAuth();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -41,16 +43,25 @@ function AppLayout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex bg-[#F4F6F8]">
-      {/* Column 1: Left Navigation Sidebar (245px) */}
-      <Sidebar />
+      {/* Column 1: Left Navigation Sidebar (245px on desktop, off-canvas on mobile) */}
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
+      />
 
       {/* Main Center Column Workspace + Top Header */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         {/* Top Global Utility Bar (68px) */}
-        <TopHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <TopHeader
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+          onToggleMobileCart={() => setMobileCartOpen((prev) => !prev)}
+          showCartButton={showRightOrderColumn}
+        />
 
         {/* Center Workspace + Right Column Container */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
           {/* Column 2: Center Main Workspace */}
           <div className="flex-1 flex overflow-hidden">
             <Routes>
@@ -68,8 +79,28 @@ function AppLayout() {
             </Routes>
           </div>
 
-          {/* Column 3: Right Order Queue & Billing Panel (375px) */}
-          {showRightOrderColumn && <RightOrderPanel />}
+          {/* Column 3: Right Order Queue & Billing Panel */}
+          {showRightOrderColumn && (
+            <>
+              {/* Desktop Docked Version (xl screens >= 1280px) */}
+              <div className="hidden xl:flex h-full">
+                <RightOrderPanel />
+              </div>
+
+              {/* Mobile / Tablet Drawer Version (< 1280px) */}
+              {mobileCartOpen && (
+                <div className="xl:hidden fixed inset-0 z-50 flex justify-end">
+                  <div
+                    onClick={() => setMobileCartOpen(false)}
+                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+                  />
+                  <div className="relative z-10 w-full max-w-[390px] h-full shadow-2xl animate-in slide-in-from-right duration-200">
+                    <RightOrderPanel onClose={() => setMobileCartOpen(false)} />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

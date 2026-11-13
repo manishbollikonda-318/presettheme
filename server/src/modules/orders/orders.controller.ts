@@ -25,9 +25,11 @@ export async function getOrder(req: Request, res: Response, next: NextFunction):
     const id = String(req.params.id);
     const order = await ordersService.getOrderById(tenantId, id);
 
-    // If guest, verify table/session ownership
-    if (req.token.scope === 'guest' && order.table_id !== req.token.tbl) {
-      throw new ForbiddenError('Access to other table orders denied');
+    // Strict Anti-IDOR: If guest, verify table AND active session ownership
+    if (req.token.scope === 'guest') {
+      if (order.table_id !== req.token.tbl || (order.session_id && order.session_id !== req.token.sub)) {
+        throw new ForbiddenError('Access to other table orders denied');
+      }
     }
 
     res.status(200).json({ order });

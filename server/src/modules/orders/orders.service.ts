@@ -16,6 +16,7 @@ export interface FullOrder {
   status: string;
   customer_name: string | null;
   table_id: string | null;
+  session_id?: string | null;
   table_number: string | null;
   outlet_id: string;
   tenant_id: string;
@@ -256,6 +257,7 @@ export async function getOrderById(tenantId: string, orderId: string): Promise<F
     status: string;
     customer_name: string | null;
     table_id: string | null;
+    session_id: string | null;
     table_number: string | null;
     outlet_id: string;
     tenant_id: string;
@@ -270,7 +272,7 @@ export async function getOrderById(tenantId: string, orderId: string): Promise<F
     updated_at: string;
   }>(
     `SELECT o.id, o.order_number, o.order_type, o.status, o.customer_name,
-            o.table_id, t.table_number, o.outlet_id, o.tenant_id,
+            o.table_id, o.session_id, t.table_number, o.outlet_id, o.tenant_id,
             o.subtotal, o.tax, o.service_charge, o.discount, o.total,
             o.promo_code, o.notes, o.created_at, o.updated_at
      FROM orders o

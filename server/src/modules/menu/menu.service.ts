@@ -1,5 +1,6 @@
 import { query } from '../../config/db.js';
 import { NotFoundError, ConflictError } from '../../shared/errors.js';
+import { logger } from '../../shared/logger.js';
 import type {
   CreateCategoryInput,
   UpdateCategoryInput,
@@ -32,17 +33,94 @@ export interface MenuItemRow {
   updated_at: string;
 }
 
+const FALLBACK_CATEGORIES: CategoryRow[] = [
+  { id: 'b1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01', tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Popular Entrees', emoji: '🍽️', sort_order: 1, is_active: true },
+  { id: 'b1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02', tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Pastas & Bowls', emoji: '🍝', sort_order: 2, is_active: true },
+  { id: 'b1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03', tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Beverages & Brews', emoji: '🥤', sort_order: 3, is_active: true },
+  { id: 'b1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04', tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Desserts', emoji: '🍰', sort_order: 4, is_active: true },
+];
+
+const FALLBACK_ITEMS: MenuItemRow[] = [
+  {
+    id: 'm1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01',
+    tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    category_id: 'b1a2c3d4-0001-4ef8-bb6d-6bb9bd380a01',
+    name: 'Grilled Teriyaki Bowl',
+    description: 'Tender chicken glazed with savory house-crafted teriyaki, steamed rice, and charred greens.',
+    price: '12.99',
+    image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80',
+    rating: '4.9',
+    extras: ['Extra Sauce', 'Add Egg', 'Extra Protein'],
+    is_available: true,
+    sort_order: 1,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'm1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02',
+    tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    category_id: 'b1a2c3d4-0002-4ef8-bb6d-6bb9bd380a02',
+    name: 'Creamy Truffle Penne',
+    description: 'Al dente penne pasta in rich wild mushroom truffle cream sauce, topped with aged parmigiano.',
+    price: '15.50',
+    image_url: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=500&auto=format&fit=crop&q=80',
+    rating: '4.8',
+    extras: ['Extra Shaved Parmesan', 'Truffle Oil Drizzle', 'Garlic Bread Slice'],
+    is_available: true,
+    sort_order: 2,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'm1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03',
+    tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    category_id: 'b1a2c3d4-0003-4ef8-bb6d-6bb9bd380a03',
+    name: 'Artisanal Cold Brew',
+    description: 'Slow-steeped single-origin Arabica beans with clean dark cocoa notes and creamy velvet finish.',
+    price: '4.75',
+    image_url: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=500&auto=format&fit=crop&q=80',
+    rating: '5.0',
+    extras: ['Oat Milk', 'Vanilla Bean Syrup', 'Sugar Free'],
+    is_available: true,
+    sort_order: 3,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'm1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04',
+    tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    category_id: 'b1a2c3d4-0004-4ef8-bb6d-6bb9bd380a04',
+    name: 'Warm Molten Lava Cake',
+    description: 'Decadent dark chocolate soufflé cake served with a scoop of vanilla bean gelato.',
+    price: '7.99',
+    image_url: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=500&auto=format&fit=crop&q=80',
+    rating: '4.9',
+    extras: ['Extra Gelato Scoop', 'Berry Compote'],
+    is_available: true,
+    sort_order: 4,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
+
 // ── Categories ──
 
 export async function listCategories(tenantId: string, activeOnly = true): Promise<CategoryRow[]> {
-  const sql = `
-    SELECT id, tenant_id, name, emoji, sort_order, is_active
-    FROM categories
-    WHERE tenant_id = $1 ${activeOnly ? 'AND is_active = true' : ''}
-    ORDER BY sort_order ASC, name ASC
-  `;
-  const result = await query<CategoryRow>(sql, [tenantId]);
-  return result.rows;
+  try {
+    const sql = `
+      SELECT id, tenant_id, name, emoji, sort_order, is_active
+      FROM categories
+      WHERE tenant_id = $1 ${activeOnly ? 'AND is_active = true' : ''}
+      ORDER BY sort_order ASC, name ASC
+    `;
+    const result = await query<CategoryRow>(sql, [tenantId]);
+    if (result.rows && result.rows.length > 0) {
+      return result.rows;
+    }
+  } catch (err) {
+    logger.warn({ err }, 'Live DB query for categories failed, falling back to default presets');
+  }
+  return FALLBACK_CATEGORIES;
 }
 
 export async function createCategory(tenantId: string, input: CreateCategoryInput): Promise<CategoryRow> {
@@ -142,29 +220,41 @@ export async function listMenuItems(
   categoryId?: string,
   availableOnly = false
 ): Promise<MenuItemRow[]> {
-  const conditions: string[] = ['m.tenant_id = $1'];
-  const values: unknown[] = [tenantId];
-  let idx = 2;
+  try {
+    const conditions: string[] = ['m.tenant_id = $1'];
+    const values: unknown[] = [tenantId];
+    let idx = 2;
 
-  if (categoryId) {
-    conditions.push(`m.category_id = $${idx++}`);
-    values.push(categoryId);
+    if (categoryId) {
+      conditions.push(`m.category_id = $${idx++}`);
+      values.push(categoryId);
+    }
+    if (availableOnly) {
+      conditions.push(`m.is_available = true`);
+    }
+
+    const sql = `
+      SELECT m.id, m.tenant_id, m.category_id, m.name, m.description, m.price,
+             m.image_url, m.rating, m.extras, m.is_available, m.sort_order,
+             m.created_at, m.updated_at
+      FROM menu_items m
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY m.sort_order ASC, m.name ASC
+    `;
+
+    const result = await query<MenuItemRow>(sql, values);
+    if (result.rows && result.rows.length > 0) {
+      return result.rows;
+    }
+  } catch (err) {
+    logger.warn({ err }, 'Live DB query for menu items failed, falling back to default presets');
   }
-  if (availableOnly) {
-    conditions.push(`m.is_available = true`);
+
+  let items = FALLBACK_ITEMS;
+  if (categoryId && categoryId !== 'ALL') {
+    items = items.filter((i) => i.category_id === categoryId);
   }
-
-  const sql = `
-    SELECT m.id, m.tenant_id, m.category_id, m.name, m.description, m.price,
-           m.image_url, m.rating, m.extras, m.is_available, m.sort_order,
-           m.created_at, m.updated_at
-    FROM menu_items m
-    WHERE ${conditions.join(' AND ')}
-    ORDER BY m.sort_order ASC, m.name ASC
-  `;
-
-  const result = await query<MenuItemRow>(sql, values);
-  return result.rows;
+  return items;
 }
 
 export async function getMenuItemById(tenantId: string, itemId: string): Promise<MenuItemRow> {

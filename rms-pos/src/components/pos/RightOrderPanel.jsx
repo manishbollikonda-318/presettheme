@@ -7,7 +7,7 @@ import { usePOS } from '../../context/POSContext';
 import { useTenant } from '../../context/TenantContext';
 import CustomerSelectModal from '../modals/CustomerSelectModal';
 
-export default function RightOrderPanel() {
+export default function RightOrderPanel({ onClose }) {
   const {
     activeOrder,
     selectedOrderId,
@@ -98,7 +98,7 @@ export default function RightOrderPanel() {
   };
 
   return (
-    <aside className="w-[375px] bg-white border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shrink-0 z-10 select-none">
+    <aside className="w-full sm:w-[380px] xl:w-[375px] bg-white border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto shrink-0 z-10 select-none h-full">
       {/* Top Section: Order Queue Switcher */}
       <div>
         <div className="flex items-center justify-between relative">
@@ -114,7 +114,7 @@ export default function RightOrderPanel() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowQueueDropdown(!showQueueDropdown)}
               className="border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1 font-medium"
@@ -134,6 +134,16 @@ export default function RightOrderPanel() {
               <Plus className="w-3 h-3" />
               New Order
             </button>
+
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="xl:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                title="Close Order Panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Show All Queue Slide-Down Menu */}

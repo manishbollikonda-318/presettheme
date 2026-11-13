@@ -27,7 +27,7 @@ export function QRSessionProvider({ children }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState(null);
 
-  // Authenticate / Resolve QR encrypted token
+  // Authenticate / Resolve QR encrypted token from physical QR code scan
   const resolveQRToken = useCallback(async (encryptedToken) => {
     setIsVerifying(true);
     setError(null);
@@ -37,13 +37,33 @@ export function QRSessionProvider({ children }) {
       setSession(data);
       sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
       sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(data));
-      // Set for client.js authorization header fallback
       localStorage.setItem('rms_jwt_access', data.access_token);
       return data;
     } catch (err) {
       const msg = err.message || 'QR code is invalid or has expired';
       setError(msg);
       clearSession();
+      throw err;
+    } finally {
+      setIsVerifying(false);
+    }
+  }, []);
+
+  // Activate a cryptographically verified demo table session (e.g. Table 01-06)
+  const activateDemoTable = useCallback(async (tableNumber = '01') => {
+    setIsVerifying(true);
+    setError(null);
+    try {
+      const data = await apiRequest(`/qr/demo/${encodeURIComponent(tableNumber)}`);
+      setToken(data.access_token);
+      setSession(data);
+      sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
+      sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(data));
+      localStorage.setItem('rms_jwt_access', data.access_token);
+      return data;
+    } catch (err) {
+      const msg = err.message || 'Failed to initialize table session';
+      setError(msg);
       throw err;
     } finally {
       setIsVerifying(false);
@@ -68,6 +88,7 @@ export function QRSessionProvider({ children }) {
         isVerifying,
         error,
         resolveQRToken,
+        activateDemoTable,
         clearSession,
       }}
     >

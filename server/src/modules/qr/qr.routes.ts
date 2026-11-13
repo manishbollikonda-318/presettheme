@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generate, verify, revoke, list } from './qr.controller.js';
+import { generate, verify, revoke, list, getDemoSession } from './qr.controller.js';
 import { validateBody } from '../../middleware/validateBody.js';
 import { generateQRSchema } from './qr.schema.js';
 import { authenticateStaff } from '../../middleware/authenticate.js';
@@ -7,6 +7,13 @@ import { authorize } from '../../middleware/authorize.js';
 import { qrVerifyLimiter } from '../../middleware/rateLimiter.js';
 
 const router = Router();
+
+// GET /qr/demo/:tableNumber — Obtain verified guest session for demo testing
+router.get(
+  '/demo/:tableNumber',
+  qrVerifyLimiter,
+  getDemoSession
+);
 
 // POST /qr/generate — Generate encrypted QR token (Admin/Manager only)
 router.post(

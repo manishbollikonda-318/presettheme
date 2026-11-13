@@ -1,20 +1,35 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Search, Mic, Download, Bell, Calendar, 
-  Sparkles, Check, ChevronDown, Utensils, X, Clock, FileSpreadsheet, FileJson
+import {
+  Search,
+  Mic,
+  Download,
+  Bell,
+  Calendar,
+  Sparkles,
+  ChevronDown,
+  X,
+  FileSpreadsheet,
+  FileJson,
+  Menu,
+  ShoppingBag,
 } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  PRESET_FOODIE_BISTRO, 
-  PRESET_COFFEE_CAFE, 
+import {
+  PRESET_FOODIE_BISTRO,
+  PRESET_COFFEE_CAFE,
   PRESET_FINE_DINING,
-  ROLES 
 } from '../../data/presets';
 
-export default function TopHeader({ searchQuery, setSearchQuery }) {
-  const { exportConfig, loadPreset, orders, products, customers } = usePOS();
+export default function TopHeader({
+  searchQuery,
+  setSearchQuery,
+  onToggleMobileMenu,
+  onToggleMobileCart,
+  showCartButton = false,
+}) {
+  const { exportConfig, loadPreset, orders, activeOrder } = usePOS();
   const { tenant, resetTenant } = useTenant();
   const { user } = useAuth();
 
@@ -26,6 +41,8 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
 
   const presetRef = useRef(null);
   const notifRef = useRef(null);
+
+  const cartItemCount = activeOrder?.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
 
   useEffect(() => {
     const updateTime = () => {
@@ -44,7 +61,6 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
     return () => clearInterval(timer);
   }, []);
 
-  // Quick Preset Switcher from Top Bar (Prompt Section 4.3 requirement)
   const handleQuickPreset = (presetName, presetObj) => {
     resetTenant(presetObj.tenant);
     loadPreset(presetObj);
@@ -72,7 +88,19 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
       alert('No orders to export.');
       return;
     }
-    const headers = ['Order ID', 'Date', 'Customer', 'Type', 'Table', 'Status', 'Subtotal', 'Tax', 'Service', 'Discount', 'Total'];
+    const headers = [
+      'Order ID',
+      'Date',
+      'Customer',
+      'Type',
+      'Table',
+      'Status',
+      'Subtotal',
+      'Tax',
+      'Service',
+      'Discount',
+      'Total',
+    ];
     const rows = orders.map((o) => [
       o.orderId,
       new Date(o.createdAt || Date.now()).toISOString(),
@@ -120,54 +148,87 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
     }
   };
 
-  // Recent active events for notifications
   const recentCooking = orders.filter((o) => o.status === 'Cooking').slice(0, 3);
   const recentReady = orders.filter((o) => o.status === 'Ready').slice(0, 3);
 
   return (
-    <header className="h-[68px] bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 select-none z-20">
-      {/* Left: Global Search Input */}
-      <div className="relative w-[340px]">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Search products, orders, or customers..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-9 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-          style={{ '--tw-ring-color': 'var(--brand-primary)' }}
-        />
-        {searchQuery ? (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        ) : (
-          <button
-            onClick={toggleMic}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
-              isListening ? 'text-rose-500 animate-pulse' : 'text-slate-400 hover:text-slate-600'
-            }`}
-            title="Voice Search"
-          >
-            <Mic className="w-4 h-4" />
-          </button>
-        )}
+    <header className="h-[68px] bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shrink-0 select-none z-20 gap-3">
+      {/* Left: Mobile Hamburger & Search Input */}
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        {/* Mobile Hamburger Menu Toggle */}
+        <button
+          onClick={onToggleMobileMenu}
+          className="md:hidden p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition shrink-0"
+          title="Open Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Global Search Input */}
+        <div className="relative flex-1 max-w-xs sm:max-w-sm">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search items, tables..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-9 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+            style={{ '--tw-ring-color': 'var(--brand-primary)' }}
+          />
+          {searchQuery ? (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={toggleMic}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                isListening ? 'text-rose-500 animate-pulse' : 'text-slate-400 hover:text-slate-600'
+              }`}
+              title="Voice Search"
+            >
+              <Mic className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Center/Right Controls */}
-      <div className="flex items-center gap-3">
-        {/* Instant Concept Presets Dropdown (for Super Admin & Demos) */}
+      {/* Right Controls */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Mobile/Tablet Order Queue Drawer Toggle */}
+        {showCartButton && (
+          <button
+            onClick={onToggleMobileCart}
+            className="xl:hidden relative border border-slate-200 bg-white hover:bg-slate-50 rounded-xl p-2 text-slate-700 flex items-center gap-1.5 shadow-2xs transition"
+            title="Open Order Queue & Cart"
+          >
+            <ShoppingBag className="w-4 h-4 text-slate-700" />
+            {cartItemCount > 0 && (
+              <span
+                className="w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center -ml-0.5"
+                style={{ backgroundColor: 'var(--brand-primary)' }}
+              >
+                {cartItemCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Concept Presets Dropdown */}
         <div className="relative" ref={presetRef}>
           <button
             onClick={() => setShowPresetMenu(!showPresetMenu)}
-            className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs transition-all"
+            className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-2.5 sm:px-3 py-2 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs transition-all"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden md:inline">Concept: <strong>{tenant.brandName}</strong></span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="hidden sm:inline">
+              Concept: <strong>{tenant.brandName}</strong>
+            </span>
+            <span className="sm:hidden font-bold max-w-[80px] truncate">{tenant.brandName}</span>
+            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
           </button>
 
           {showPresetMenu && (
@@ -181,7 +242,7 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
               >
                 <div>
                   <p className="font-bold text-slate-800">Foodie Bistro</p>
-                  <p className="text-[10px] text-slate-400">Rice bowls, Truffle Pasta in $</p>
+                  <p className="text-[10px] text-slate-400">Bowls & Truffle Pasta ($)</p>
                 </div>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
               </button>
@@ -192,7 +253,7 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
               >
                 <div>
                   <p className="font-bold text-slate-800">Chai & Chill Cafe</p>
-                  <p className="text-[10px] text-slate-400">Coffee, Chai, Maggi in ₹</p>
+                  <p className="text-[10px] text-slate-400">Coffee, Chai, Maggi (₹)</p>
                 </div>
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-600" />
               </button>
@@ -203,7 +264,7 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
               >
                 <div>
                   <p className="font-bold text-slate-800">La Tavola Pizzeria</p>
-                  <p className="text-[10px] text-slate-400">Italian Wines & Pasta in €</p>
+                  <p className="text-[10px] text-slate-400">Italian Wines & Pasta (€)</p>
                 </div>
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-600" />
               </button>
@@ -211,14 +272,14 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
           )}
         </div>
 
-        {/* Download Report Button with CSV/JSON dropdown */}
-        <div className="relative">
+        {/* Export Reports Button (Hidden on tiny phone screens) */}
+        <div className="hidden sm:block relative">
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
-            className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-700 flex items-center gap-2 transition-all shadow-2xs"
+            className="border border-slate-200 bg-white hover:bg-slate-50 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-all shadow-2xs"
           >
             <Download className="w-3.5 h-3.5 text-slate-600" />
-            <span className="hidden sm:inline">Download Report</span>
+            <span className="hidden md:inline">Report</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
 
@@ -229,23 +290,23 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                Export as CSV Spreadsheet
+                Export CSV Spreadsheet
               </button>
               <button
                 onClick={handleExportJSON}
                 className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
               >
                 <FileJson className="w-3.5 h-3.5 text-blue-600" />
-                Export as Full JSON Backup
+                Export Full JSON Backup
               </button>
             </div>
           )}
         </div>
 
-        {/* Live Date Pill */}
-        <div className="border border-slate-200 bg-white rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-700 flex items-center gap-2 shadow-2xs">
+        {/* Live Date Pill (Hidden on mobile and tablet) */}
+        <div className="hidden lg:flex border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 items-center gap-2 shadow-2xs">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span className="hidden lg:inline">{dateStr}</span>
+          <span>{dateStr}</span>
         </div>
 
         {/* Notification Bell */}
@@ -261,37 +322,48 @@ export default function TopHeader({ searchQuery, setSearchQuery }) {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 top-10 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-30 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 top-10 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-30 animate-in fade-in zoom-in-95 duration-100">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-                <span className="text-xs font-bold text-slate-900">Live Kitchen & Table Alerts</span>
-                <span className="text-[10px] text-slate-400">{recentCooking.length + recentReady.length} alerts</span>
+                <span className="text-xs font-bold text-slate-900">Kitchen & Table Alerts</span>
+                <span className="text-[10px] text-slate-400">
+                  {recentCooking.length + recentReady.length} alerts
+                </span>
               </div>
 
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {recentReady.map((ord) => (
-                  <div key={ord.id} className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100 text-xs">
+                  <div
+                    key={ord.id}
+                    className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100 text-xs"
+                  >
                     <p className="font-bold text-emerald-800">
                       Ticket {ord.orderId} is Ready for Service!
                     </p>
                     <p className="text-[10px] text-emerald-600 mt-0.5">
-                      Guest: {ord.customerName || 'Walk-in'} {ord.tableNumber ? `• Table #${ord.tableNumber}` : ''}
+                      Guest: {ord.customerName || 'Walk-in'}{' '}
+                      {ord.tableNumber ? `• Table #${ord.tableNumber}` : ''}
                     </p>
                   </div>
                 ))}
 
                 {recentCooking.map((ord) => (
-                  <div key={ord.id} className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-xs">
+                  <div
+                    key={ord.id}
+                    className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-xs"
+                  >
                     <p className="font-bold text-amber-800">
                       Ticket {ord.orderId} currently Cooking
                     </p>
                     <p className="text-[10px] text-amber-600 mt-0.5">
-                      {ord.items?.length} items being prepped in kitchen
+                      {ord.items?.length} items being prepped
                     </p>
                   </div>
                 ))}
 
                 {recentCooking.length === 0 && recentReady.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-4">No new kitchen notifications</p>
+                  <p className="text-xs text-slate-400 text-center py-4">
+                    No new kitchen notifications
+                  </p>
                 )}
               </div>
             </div>
