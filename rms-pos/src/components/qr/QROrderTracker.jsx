@@ -88,7 +88,7 @@ export function QROrderTracker({ orderId, onClose, onNewOrder }) {
               : status === 'ready'
               ? 'Your order is plated and on its way to your table.'
               : status === 'completed'
-              ? 'Hope you had a wonderful dining experience at LOC!'
+              ? 'Hope you had a wonderful dining experience!'
               : 'Your ticket has reached the kitchen display screen.'}
           </p>
 

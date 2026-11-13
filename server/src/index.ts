@@ -73,7 +73,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(env.PORT, () => {
-    logger.info(`🚀 LOC QR Restaurant Platform API running on port ${env.PORT}`);
+    logger.info(`🚀 Smart QR Restaurant Platform API running on port ${env.PORT}`);
   });
 }
 

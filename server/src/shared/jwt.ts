@@ -39,7 +39,7 @@ function sign(payload: object, expiresIn: string): string {
   const options: SignOptions = {
     algorithm: ALGORITHM,
     expiresIn: expiresIn as any,
-    issuer: 'loc-qr-platform',
+    issuer: 'qr-platform',
   };
   return jwt.sign(payload, jwtKeys.privateKey, options);
 }
@@ -62,7 +62,7 @@ export function verify(token: string): TokenPayload & JwtPayload {
   try {
     const decoded = jwt.verify(token, jwtKeys.publicKey, {
       algorithms: [ALGORITHM],
-      issuer: 'loc-qr-platform',
+      issuer: 'qr-platform',
     });
     if (typeof decoded === 'string') {
       throw new AuthError('Invalid token format');

@@ -200,7 +200,7 @@ export default function QROrderingView() {
           </div>
           <div>
             <h1 className="font-extrabold text-base text-slate-900 tracking-tight">
-              Love Over Coffee
+              {session?.tenant_name || "Smart QR Restaurant"}
             </h1>
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
               <MapPin className="w-3 h-3" />

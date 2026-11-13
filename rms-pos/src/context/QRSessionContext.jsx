@@ -3,8 +3,8 @@ import { apiRequest } from '../api/client';
 
 const QRSessionContext = createContext(null);
 
-const STORAGE_KEY_TOKEN = 'loc_guest_jwt';
-const STORAGE_KEY_SESSION = 'loc_guest_session';
+const STORAGE_KEY_TOKEN = 'qr_guest_jwt';
+const STORAGE_KEY_SESSION = 'qr_guest_session';
 
 export function QRSessionProvider({ children }) {
   const [session, setSession] = useState(() => {
