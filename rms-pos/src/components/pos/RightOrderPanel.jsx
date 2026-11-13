@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
 import { useTenant } from '../../context/TenantContext';
+import { formatCurrency } from '../../utils/currency';
+import toast from 'react-hot-toast';
 import CustomerSelectModal from '../modals/CustomerSelectModal';
 
 export default function RightOrderPanel({ onClose }) {
@@ -70,8 +72,13 @@ export default function RightOrderPanel({ onClose }) {
     setPromoError('');
     if (!promoInput.trim()) return;
     const result = applyPromoCode(promoInput.trim());
-    if (!result.success) setPromoError(result.error);
-    else setPromoInput('');
+    if (!result.success) {
+      setPromoError(result.error);
+      toast.error(result.error || 'Invalid promo voucher');
+    } else {
+      setPromoInput('');
+      toast.success('Promo voucher applied!');
+    }
   };
 
   const handleCompleteOrder = () => {
@@ -79,6 +86,7 @@ export default function RightOrderPanel({ onClose }) {
     const completed = submitOrder(tenant);
     if (completed) {
       setShowReceipt(true);
+      toast.success('Ticket submitted & thermal invoice generated!');
     }
   };
 
@@ -335,8 +343,8 @@ export default function RightOrderPanel({ onClose }) {
 
                   {/* Bottom Row: Formatted subtotal on left + soft green pill on right with Qty */}
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                    <span className="text-xs font-bold text-slate-900">
-                      {tenant.currencySymbol}{(item.price * item.quantity).toFixed(2)}
+                    <span className="text-xs font-bold text-[#1F2937] font-mono">
+                      {formatCurrency(item.price * item.quantity)}
                     </span>
 
                     <div
@@ -418,36 +426,36 @@ export default function RightOrderPanel({ onClose }) {
         <div className="space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-500">
             <span>Sub total</span>
-            <span className="font-semibold text-slate-700">
-              {tenant.currencySymbol}{subtotal.toFixed(2)}
+            <span className="font-semibold text-slate-700 font-mono">
+              {formatCurrency(subtotal)}
             </span>
           </div>
 
           <div className="flex justify-between text-slate-500">
             <span>Service Charge ({tenant.serviceChargePercent}%)</span>
-            <span className="font-semibold text-slate-700">
-              {tenant.currencySymbol}{serviceCharge.toFixed(2)}
+            <span className="font-semibold text-slate-700 font-mono">
+              {formatCurrency(serviceCharge)}
             </span>
           </div>
 
           <div className="flex justify-between text-slate-500">
             <span>Tax ({tenant.taxPercent}%)</span>
-            <span className="font-semibold text-slate-700">
-              {tenant.currencySymbol}{tax.toFixed(2)}
+            <span className="font-semibold text-slate-700 font-mono">
+              {formatCurrency(tax)}
             </span>
           </div>
 
           {discount > 0 && (
             <div className="flex justify-between text-emerald-600 font-medium">
               <span>Discount / Promo</span>
-              <span>-{tenant.currencySymbol}{discount.toFixed(2)}</span>
+              <span className="font-mono">-{formatCurrency(discount)}</span>
             </div>
           )}
 
           <div className="flex justify-between font-bold text-slate-900 text-sm pt-2 border-t border-slate-200">
             <span>Total Amount</span>
             <span className="font-mono text-base font-extrabold" style={{ color: 'var(--brand-primary)' }}>
-              {tenant.currencySymbol}{total.toFixed(2)}
+              {formatCurrency(total)}
             </span>
           </div>
         </div>
@@ -522,7 +530,7 @@ export default function RightOrderPanel({ onClose }) {
                     )}
                   </div>
                   <span className="font-mono font-semibold">
-                    {tenant.currencySymbol}{(item.price * item.quantity).toFixed(2)}
+                    {formatCurrency(item.price * item.quantity)}
                   </span>
                 </div>
               ))}
@@ -532,25 +540,25 @@ export default function RightOrderPanel({ onClose }) {
             <div className="border-t border-dashed border-slate-300 pt-2 text-xs space-y-1">
               <div className="flex justify-between text-slate-600">
                 <span>Subtotal</span>
-                <span className="font-mono">{tenant.currencySymbol}{subtotal.toFixed(2)}</span>
+                <span className="font-mono">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Service Charge ({tenant.serviceChargePercent}%)</span>
-                <span className="font-mono">{tenant.currencySymbol}{serviceCharge.toFixed(2)}</span>
+                <span className="font-mono">{formatCurrency(serviceCharge)}</span>
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Tax ({tenant.taxPercent}%)</span>
-                <span className="font-mono">{tenant.currencySymbol}{tax.toFixed(2)}</span>
+                <span className="font-mono">{formatCurrency(tax)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-600">
                   <span>Promo Discount</span>
-                  <span className="font-mono">-{tenant.currencySymbol}{discount.toFixed(2)}</span>
+                  <span className="font-mono">-{formatCurrency(discount)}</span>
                 </div>
               )}
               <div className="flex justify-between font-extrabold text-sm pt-2 border-t border-dashed border-slate-300 text-slate-900">
                 <span>TOTAL PAID</span>
-                <span className="font-mono">{tenant.currencySymbol}{total.toFixed(2)}</span>
+                <span className="font-mono">{formatCurrency(total)}</span>
               </div>
             </div>
 

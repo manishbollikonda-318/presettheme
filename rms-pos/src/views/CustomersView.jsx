@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { usePOS } from '../context/POSContext';
 import { useTenant } from '../context/TenantContext';
+import { formatCurrency } from '../utils/currency';
 import { BookUser, Plus, Search, Mail, Phone, ShoppingBag, Trash2 } from 'lucide-react';
 
 export default function CustomersView() {
@@ -125,8 +126,8 @@ export default function CustomersView() {
                         {cust.visits || 0} visits
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-slate-800 text-sm">
-                      {tenant.currencySymbol}{(cust.totalSpent || 0).toFixed(2)}
+                    <td className="py-3.5 px-4 text-right font-bold text-slate-800 text-sm font-mono">
+                      {formatCurrency(cust.totalSpent || 0)}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       <button

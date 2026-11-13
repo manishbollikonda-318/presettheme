@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { TenantProvider } from './context/TenantContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { POSProvider } from './context/POSContext';
@@ -110,6 +111,21 @@ function AppLayout() {
 export default function App() {
   return (
     <TenantProvider>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#FFFFFF',
+            color: '#1F2937',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            fontSize: '13px',
+            fontWeight: 600,
+          },
+        }}
+      />
       <AuthProvider>
         <POSProvider>
           <QRSessionProvider>

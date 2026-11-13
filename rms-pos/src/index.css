@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --brand-primary: #16A34A;
-  --brand-primary-hover: #15803d;
-  --brand-primary-light: #dcfce7;
+  --brand-primary: #D9480F;
+  --brand-primary-hover: #C23E0A;
+  --brand-primary-light: #FFF4E6;
+  --bg-warm: #FAF9F6;
+  --text-charcoal: #1F2937;
 }
 
 * {
@@ -16,6 +18,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-warm);
+  color: var(--text-charcoal);
 }
 
 /* Scrollbar styling */
@@ -27,11 +31,26 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #E5E7EB;
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #D1D5DB;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.glass-dropdown {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(229, 231, 235, 0.8);
 }
 
 /* Brand color utilities */

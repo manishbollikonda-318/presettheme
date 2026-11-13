@@ -1,5 +1,6 @@
 import { useTenant } from '../context/TenantContext';
 import { usePOS } from '../context/POSContext';
+import { formatCurrency } from '../utils/currency';
 import { UtensilsCrossed, User, Clock, Check, Plus } from 'lucide-react';
 
 export default function DiningView() {
@@ -107,8 +108,8 @@ export default function DiningView() {
                     <Clock className="w-3 h-3 text-slate-400 shrink-0" />
                     {table.order.orderId}
                   </p>
-                  <p className="text-xs font-bold text-slate-900 mt-1">
-                    {tenant.currencySymbol}{table.order.total?.toFixed(2)}
+                  <p className="text-xs font-bold text-slate-900 mt-1 font-mono">
+                    {formatCurrency(table.order.total || 0)}
                   </p>
                 </div>
               ) : (

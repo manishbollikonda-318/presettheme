@@ -1,7 +1,8 @@
 import { usePOS } from '../context/POSContext';
 import { useTenant } from '../context/TenantContext';
+import { formatCurrency } from '../utils/currency';
 import { 
-  TrendingUp, ShoppingCart, Users, DollarSign, 
+  TrendingUp, ShoppingCart, Users, IndianRupee, 
   ArrowUpRight, Clock, CheckCircle2, Flame, Award, ChefHat
 } from 'lucide-react';
 
@@ -55,13 +56,13 @@ export default function OverviewView() {
   const stats = [
     {
       label: 'Gross Sales Volume',
-      value: `${tenant.currencySymbol}${totalRevenue.toFixed(2)}`,
-      icon: DollarSign,
+      value: formatCurrency(totalRevenue),
+      icon: IndianRupee,
       subText: `${orders.length} total tickets logged`,
     },
     {
       label: "Today's Direct Sales",
-      value: `${tenant.currencySymbol}${todayRevenue.toFixed(2)}`,
+      value: formatCurrency(todayRevenue),
       icon: TrendingUp,
       subText: `${todayOrders.length} tickets punched today`,
     },
@@ -73,7 +74,7 @@ export default function OverviewView() {
     },
     {
       label: 'Average Order Value (AOV)',
-      value: `${tenant.currencySymbol}${averageTicket.toFixed(2)}`,
+      value: formatCurrency(averageTicket),
       icon: Award,
       subText: `${totalDishesSold} total dishes ordered`,
     },
@@ -165,8 +166,8 @@ export default function OverviewView() {
                   </div>
 
                   <div className="text-right">
-                    <p className="text-xs font-bold text-slate-900">
-                      {tenant.currencySymbol}{order.total?.toFixed(2)}
+                    <p className="text-xs font-bold text-slate-900 font-mono">
+                      {formatCurrency(order.total || 0)}
                     </p>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
@@ -215,7 +216,7 @@ export default function OverviewView() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-800 truncate">{product.name}</p>
                   <p className="text-[10px] text-slate-400">
-                    {tenant.currencySymbol}{product.price.toFixed(2)} • Rating: ★ {product.rating}
+                    {formatCurrency(product.price)} • Rating: ★ {product.rating}
                   </p>
                 </div>
                 <div className="text-right">

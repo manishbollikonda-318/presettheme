@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { 
-  X, Image as ImageIcon, Sparkles, Tag, DollarSign, 
+  X, Image as ImageIcon, Sparkles, Tag, IndianRupee, 
   Clock, Star, Check, Plus, Trash2, Eye, Flame, ShieldAlert
 } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
 import { useTenant } from '../../context/TenantContext';
+import { formatCurrency } from '../../utils/currency';
+import toast from 'react-hot-toast';
 
 const CURATED_PHOTO_PRESETS = [
   { name: 'Rice Bowl', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80' },
@@ -355,16 +357,16 @@ export default function ProductFormModal({ product, onClose }) {
                 </span>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Base Dish Price:</span>
-                  <span className="font-mono font-bold">{tenant.currencySymbol}{priceNum.toFixed(2)}</span>
+                  <span className="font-mono font-bold">{formatCurrency(priceNum)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>Applicable VAT / Tax ({tenant.taxPercent}%):</span>
-                  <span className="font-mono">+{tenant.currencySymbol}{taxAmount.toFixed(2)}</span>
+                  <span className="font-mono">+{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between text-xs font-bold text-slate-900 pt-2 border-t border-slate-200">
                   <span>Customer Gross Menu Total:</span>
                   <span className="font-mono text-emerald-700 text-sm">
-                    {tenant.currencySymbol}{finalPriceWithTax.toFixed(2)}
+                    {formatCurrency(finalPriceWithTax)}
                   </span>
                 </div>
               </div>
@@ -433,8 +435,8 @@ export default function ProductFormModal({ product, onClose }) {
                     {form.name || 'Untitled Dish'}
                   </h4>
                   <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-xs">
-                    <span className="font-bold text-slate-900">
-                      {tenant.currencySymbol}{priceNum.toFixed(2)}
+                    <span className="font-bold text-slate-900 font-mono">
+                      {formatCurrency(priceNum)}
                     </span>
                     <span className="text-[10px] text-amber-600 font-bold flex items-center gap-0.5 bg-amber-50 px-1.5 py-0.5 rounded">
                       ★ {form.rating}

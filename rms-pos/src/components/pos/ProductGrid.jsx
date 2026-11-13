@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Target, Plus, Star, Edit3, Check, Sparkles } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
 import { useTenant } from '../../context/TenantContext';
+import { formatCurrency } from '../../utils/currency';
+import toast from 'react-hot-toast';
 
 export default function ProductGrid({ searchQuery, onOpenProductModal }) {
   const { categories, products, addToCart } = usePOS();
@@ -32,6 +34,7 @@ export default function ProductGrid({ searchQuery, onOpenProductModal }) {
     } else {
       addToCart(product);
       setAddedProductId(product.id);
+      toast.success(`Added ${product.name}`, { duration: 1500 });
       setTimeout(() => setAddedProductId(null), 600);
     }
   };
@@ -39,6 +42,7 @@ export default function ProductGrid({ searchQuery, onOpenProductModal }) {
   const handleConfirmCustomization = () => {
     if (!customizingProduct) return;
     addToCart(customizingProduct, selectedExtras, customNotes.trim());
+    toast.success(`Added ${customizingProduct.name} with customizations`, { duration: 1500 });
     setCustomizingProduct(null);
     setSelectedExtras([]);
     setCustomNotes('');
@@ -190,8 +194,8 @@ export default function ProductGrid({ searchQuery, onOpenProductModal }) {
 
                 {/* Bottom Row */}
                 <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-100">
-                  <span className="font-bold text-sm text-slate-900">
-                    {tenant.currencySymbol}{product.price.toFixed(2)}
+                  <span className="font-bold text-sm text-[#1F2937] font-mono">
+                    {formatCurrency(product.price)}
                   </span>
 
                   <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1 border border-amber-200/50">
@@ -223,8 +227,8 @@ export default function ProductGrid({ searchQuery, onOpenProductModal }) {
               />
               <div>
                 <h4 className="text-sm font-bold text-slate-900">{customizingProduct.name}</h4>
-                <p className="text-xs text-slate-500 font-semibold">
-                  {tenant.currencySymbol}{customizingProduct.price.toFixed(2)}
+                <p className="text-xs text-stone-600 font-mono font-semibold">
+                  {formatCurrency(customizingProduct.price)}
                 </p>
               </div>
             </div>

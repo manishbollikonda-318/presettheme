@@ -12,6 +12,7 @@ import menuRoutes from './modules/menu/menu.routes.js';
 import ordersRoutes from './modules/orders/orders.routes.js';
 import tablesRoutes from './modules/tables/tables.routes.js';
 import transactionsRoutes from './modules/transactions/transactions.routes.js';
+import tenantsRoutes from './modules/tenants/tenants.routes.js';
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use('/menu', menuRoutes);
 app.use('/orders', ordersRoutes);
 app.use('/tables', tablesRoutes);
 app.use('/transactions', transactionsRoutes);
+app.use('/tenants', tenantsRoutes);
 
 // Default Deny 404 handler for undefined endpoints
 app.use((req: Request, _res: Response, next: NextFunction) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import {
   Search,
   Mic,
@@ -81,11 +82,12 @@ export default function TopHeader({
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
+    toast.success('Report exported as JSON');
   };
 
   const handleExportCSV = () => {
     if (orders.length === 0) {
-      alert('No orders to export.');
+      toast.error('No orders to export');
       return;
     }
     const headers = [
@@ -123,11 +125,12 @@ export default function TopHeader({
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
+    toast.success('Sales ledger exported as CSV');
   };
 
   const toggleMic = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert('Speech recognition is not supported in this browser.');
+      toast.error('Speech recognition is not supported in this browser');
       return;
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -242,7 +245,7 @@ export default function TopHeader({
               >
                 <div>
                   <p className="font-bold text-slate-800">Foodie Bistro</p>
-                  <p className="text-[10px] text-slate-400">Bowls & Truffle Pasta ($)</p>
+                  <p className="text-[10px] text-slate-400">Bowls & Truffle Pasta (₹)</p>
                 </div>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
               </button>

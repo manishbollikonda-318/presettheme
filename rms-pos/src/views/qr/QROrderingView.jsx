@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQRSession } from '../../context/QRSessionContext';
+import { useTenant } from '../../context/TenantContext';
 import { apiRequest } from '../../api/client';
 import { QRMenuItemCard } from '../../components/qr/QRMenuItemCard';
 import { QRCartDrawer } from '../../components/qr/QRCartDrawer';
 import { QROrderTracker } from '../../components/qr/QROrderTracker';
+import { formatCurrency } from '../../utils/currency';
+import toast from 'react-hot-toast';
 import {
   Coffee,
   ShoppingBag,
@@ -12,13 +15,10 @@ import {
   Sparkles,
   AlertTriangle,
   QrCode,
-  MapPin,
   RefreshCw,
   ShieldCheck,
   Lock,
-  ChevronRight,
-  Utensils,
-  CheckCircle,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 const DEMO_TABLES = [
@@ -35,6 +35,7 @@ export default function QROrderingView() {
   const navigate = useNavigate();
   const { session, token, isVerifying, error, resolveQRToken, activateDemoTable, clearSession } =
     useQRSession();
+  const { tenant } = useTenant();
 
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -89,8 +90,9 @@ export default function QROrderingView() {
     setActivatingTable(tableNum);
     try {
       await activateDemoTable(tableNum);
+      toast.success(`Table #${tableNum} session active!`);
     } catch (err) {
-      alert(`Could not start session for Table ${tableNum}: ${err.message}`);
+      toast.error(`Could not start session for Table ${tableNum}: ${err.message}`);
     } finally {
       setActivatingTable(null);
     }
@@ -107,6 +109,7 @@ export default function QROrderingView() {
       }
       return [...prev, { ...item, quantity: 1, price: parseFloat(item.price) }];
     });
+    toast.success(`Added ${item.name}`, { duration: 1500 });
   };
 
   const handleRemoveFromCart = (itemId) => {
@@ -153,9 +156,10 @@ export default function QROrderingView() {
         setCart([]);
         setIsCartOpen(false);
         setActiveOrderId(res.order.id);
+        toast.success('Order ticket dispatched to kitchen!');
       }
     } catch (err) {
-      alert(`Order submission failed: ${err.message || 'Please contact staff'}`);
+      toast.error(`Order failed: ${err.message || 'Please contact staff'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -182,11 +186,11 @@ export default function QROrderingView() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-500 border border-rose-200/60 flex items-center justify-center mb-4 shadow-xs">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-500 border border-rose-200/80 flex items-center justify-center mb-4 shadow-sm">
           <AlertTriangle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-extrabold text-slate-800">Session Invalid or Expired</h2>
-        <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+        <h2 className="text-xl font-bold text-[#1F2937]">Session Invalid or Expired</h2>
+        <p className="text-xs text-stone-500 mt-2 max-w-xs leading-relaxed">
           {error}. Please point your camera and rescan the QR code on your dining table.
         </p>
         <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
@@ -195,10 +199,10 @@ export default function QROrderingView() {
               clearSession();
               window.location.reload();
             }}
-            className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-xs transition"
+            className="w-full py-3 bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition active:scale-98"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Try Again / Select Table
+            <span>Try Again / Select Table</span>
           </button>
         </div>
       </div>
@@ -209,11 +213,11 @@ export default function QROrderingView() {
   if (isVerifying) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-100/60 text-emerald-800 flex items-center justify-center mb-4 animate-spin">
+        <div className="w-14 h-14 rounded-2xl bg-orange-100 text-[#D9480F] flex items-center justify-center mb-4 animate-spin shadow-xs">
           <Coffee className="w-7 h-7" />
         </div>
-        <h2 className="text-lg font-bold text-slate-800">Verifying Table QR Token...</h2>
-        <p className="text-xs text-slate-500 mt-1">Establishing anti-tamper encrypted session</p>
+        <h2 className="text-lg font-bold text-[#1F2937]">Verifying Table QR Token...</h2>
+        <p className="text-xs text-stone-500 mt-1">Establishing anti-tamper encrypted session</p>
       </div>
     );
   }
@@ -222,25 +226,25 @@ export default function QROrderingView() {
   if (!session && !token) {
     return (
       <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
-        <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-xl p-6 sm:p-8">
+        <div className="w-full max-w-lg bg-white/90 backdrop-blur-md rounded-2xl border border-stone-200/80 shadow-sm p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-800 text-white flex items-center justify-center mx-auto mb-3 shadow-md">
+            <div className="w-14 h-14 rounded-2xl bg-[#D9480F] text-white flex items-center justify-center mx-auto mb-3 shadow-md">
               <QrCode className="w-7 h-7" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              TableCraft Digital Dining
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1F2937] tracking-tight">
+              {tenant?.brandName || 'Foodie'} Digital Dining
             </h1>
-            <p className="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs text-stone-500 mt-1.5 max-w-sm mx-auto leading-relaxed">
               Scan the physical QR code on your dining table, or choose your table below to launch an encrypted dining session:
             </p>
           </div>
 
           {/* Security Notice */}
-          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 mb-6 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-            <div className="text-[11px] text-emerald-900 leading-relaxed">
-              <strong>Anti-Tamper Table Verification:</strong> Each table generates a 32-byte AES-256-GCM encrypted token. Orders are strictly locked to the verified table.
+          <div className="bg-orange-50/70 border border-orange-200/80 rounded-2xl p-3.5 mb-6 flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-[#D9480F] shrink-0 mt-0.5" />
+            <div className="text-[11px] text-[#1F2937] leading-relaxed">
+              <strong className="text-[#D9480F]">Anti-Tamper Table Verification:</strong> Each table generates a 32-byte AES-256-GCM encrypted token. Orders are strictly locked to the verified table.
             </div>
           </div>
 
@@ -251,21 +255,21 @@ export default function QROrderingView() {
                 key={tbl.number}
                 disabled={activatingTable !== null}
                 onClick={() => handleSelectTable(tbl.number)}
-                className="group border border-slate-200 hover:border-emerald-600 rounded-2xl p-3.5 text-left bg-slate-50/50 hover:bg-emerald-50/30 transition-all shadow-2xs hover:shadow-md flex flex-col justify-between"
+                className="group border border-stone-200/80 hover:border-[#D9480F] rounded-2xl p-3.5 text-left bg-stone-50/50 hover:bg-orange-50/20 transition-all shadow-2xs hover:shadow-sm flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xl">{tbl.icon}</span>
-                  <span className="text-[10px] font-bold text-slate-400 font-mono">
+                  <span className="text-[10px] font-bold text-stone-400 font-mono">
                     {tbl.capacity} Seats
                   </span>
                 </div>
                 <div>
-                  <p className="font-extrabold text-sm text-slate-900 group-hover:text-emerald-800 transition-colors">
+                  <p className="font-bold text-sm text-[#1F2937] group-hover:text-[#D9480F] transition-colors">
                     Table #{tbl.number}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">{tbl.zone}</p>
+                  <p className="text-[10px] text-stone-500 mt-0.5 truncate">{tbl.zone}</p>
                 </div>
-                <div className="mt-3 text-[10px] font-bold text-emerald-700 flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                <div className="mt-3 text-[10px] font-bold text-[#D9480F] flex items-center gap-1 opacity-80 group-hover:opacity-100">
                   {activatingTable === tbl.number ? (
                     <RefreshCw className="w-3 h-3 animate-spin" />
                   ) : (
@@ -276,8 +280,8 @@ export default function QROrderingView() {
             ))}
           </div>
 
-          <p className="text-center text-[10px] text-slate-400">
-            Powered by generic white-label multi-tenant POS engine
+          <p className="text-center text-[10px] text-stone-400">
+            Powered by generic multi-tenant restaurant OS
           </p>
         </div>
       </div>
@@ -286,22 +290,22 @@ export default function QROrderingView() {
 
   // 4. Authenticated Dining Screen (Table Locked)
   return (
-    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 flex flex-col font-sans pb-32">
+    <div className="min-h-screen bg-[#FAF9F6] text-[#1F2937] flex flex-col font-sans pb-32">
       {/* Top Sticky Bar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-2xs">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-xs">
-            <Coffee className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl bg-[#D9480F] text-white flex items-center justify-center shadow-xs">
+            <UtensilsCrossed className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight">
-              {session?.tenant_name || 'TableCraft Bistro'}
+            <h1 className="font-bold text-sm sm:text-base text-[#1F2937] tracking-tight">
+              {session?.tenant_name || tenant?.brandName || 'Foodie Bistro'}
             </h1>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
-              <Lock className="w-3 h-3 text-emerald-600" />
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#D9480F]">
+              <Lock className="w-3 h-3 text-[#D9480F]" />
               <span>Table #{session?.table?.number || '01'}</span>
-              <span className="text-slate-300">•</span>
-              <span className="text-slate-500 text-[10px]">Session Verified</span>
+              <span className="text-stone-300">•</span>
+              <span className="text-stone-500 text-[10px]">Session Verified</span>
             </div>
           </div>
         </div>
@@ -313,7 +317,7 @@ export default function QROrderingView() {
                 clearSession();
               }
             }}
-            className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition"
+            className="text-[11px] font-semibold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-xl border border-stone-200/80 bg-white/60 hover:bg-stone-50 transition"
           >
             Switch Table
           </button>
@@ -321,11 +325,11 @@ export default function QROrderingView() {
           {totalCartCount > 0 && (
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl flex items-center gap-2 shadow-xs active:scale-95 transition"
+              className="relative px-3.5 py-2 bg-[#D9480F] hover:bg-[#C23E0A] text-white rounded-xl flex items-center gap-2 shadow-xs active:scale-95 transition"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span className="font-mono font-bold text-xs">${cartSubtotal.toFixed(2)}</span>
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-slate-900 font-mono text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+              <span className="font-mono font-bold text-xs">{formatCurrency(cartSubtotal)}</span>
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-stone-900 font-mono text-[10px] font-extrabold flex items-center justify-center shadow-xs">
                 {totalCartCount}
               </span>
             </button>
@@ -334,22 +338,22 @@ export default function QROrderingView() {
       </header>
 
       {/* Security Banner */}
-      <div className="bg-emerald-900 text-white px-4 py-2 text-center text-[11px] font-medium flex items-center justify-center gap-2 shadow-xs">
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-        <span>Anti-Tamper Active: Orders from this device are locked exclusively to Table #{session?.table?.number || '01'}.</span>
+      <div className="bg-[#1F2937] text-white px-4 py-2 text-center text-[11px] font-medium flex items-center justify-center gap-2 shadow-xs">
+        <ShieldCheck className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+        <span>Anti-Tamper Shield Active: Orders from this device are locked exclusively to Table #{session?.table?.number || '01'}.</span>
       </div>
 
       <div className="max-w-4xl mx-auto w-full px-4 sm:px-6">
         {/* Search Input */}
         <div className="pt-5 pb-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               type="text"
-              placeholder="Search entrees, pastas, cold brews, desserts..."
+              placeholder="Search entrees, pizzas, pastas, drinks, desserts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 text-xs bg-white rounded-2xl border border-slate-200/80 shadow-2xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+              className="w-full pl-10 pr-4 py-3 text-xs bg-white/80 backdrop-blur-md rounded-2xl border border-stone-200/80 shadow-2xs placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#D9480F]/20 focus:border-[#D9480F] transition"
             />
           </div>
         </div>
@@ -360,8 +364,8 @@ export default function QROrderingView() {
             onClick={() => setSelectedCategory('ALL')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
               selectedCategory === 'ALL'
-                ? 'bg-emerald-800 text-white shadow-xs'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-[#D9480F] text-white shadow-xs'
+                : 'bg-white/80 text-stone-600 border border-stone-200/80 hover:bg-stone-50'
             }`}
           >
             ✨ All Items
@@ -372,8 +376,8 @@ export default function QROrderingView() {
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  ? 'bg-[#D9480F] text-white shadow-xs'
+                  : 'bg-white/80 text-stone-600 border border-stone-200/80 hover:bg-stone-50'
               }`}
             >
               {cat.emoji} {cat.name}
@@ -384,15 +388,15 @@ export default function QROrderingView() {
         {/* Menu Cards Grid: 1 col on mobile, 2 col on tablet/desktop */}
         <main className="py-4">
           {menuLoading ? (
-            <div className="py-20 text-center text-slate-400">
-              <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2 opacity-50" />
+            <div className="py-20 text-center text-stone-400">
+              <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2 opacity-50 text-[#D9480F]" />
               <p className="text-xs font-semibold">Loading Fresh Kitchen Menu...</p>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="py-20 text-center text-slate-400 bg-white rounded-3xl p-8 border border-slate-200">
-              <Coffee className="w-10 h-10 mx-auto mb-2 opacity-40 text-emerald-800" />
-              <p className="text-sm font-bold text-slate-700">No dishes found</p>
-              <p className="text-xs text-slate-400 mt-1">Try another category or search keyword.</p>
+            <div className="py-20 text-center text-stone-400 bg-white/80 rounded-2xl p-8 border border-stone-200/80 shadow-sm">
+              <Coffee className="w-10 h-10 mx-auto mb-2 opacity-40 text-[#D9480F]" />
+              <p className="text-sm font-bold text-stone-700">No dishes found</p>
+              <p className="text-xs text-stone-400 mt-1">Try another category or search keyword.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -418,7 +422,7 @@ export default function QROrderingView() {
         <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto">
           <button
             onClick={() => setIsCartOpen(true)}
-            className="w-full py-4 px-6 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold flex items-center justify-between shadow-xl shadow-emerald-900/25 active:scale-98 transition"
+            className="w-full py-4 px-6 rounded-2xl bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold flex items-center justify-between shadow-lg shadow-orange-950/20 active:scale-98 transition"
           >
             <div className="flex items-center gap-2.5">
               <span className="w-7 h-7 rounded-xl bg-white/20 text-white font-mono text-xs flex items-center justify-center font-bold">
@@ -426,7 +430,7 @@ export default function QROrderingView() {
               </span>
               <span className="text-sm">View Table #{session?.table?.number || '01'} Order</span>
             </div>
-            <span className="font-mono text-base">${cartSubtotal.toFixed(2)} →</span>
+            <span className="font-mono text-base">{formatCurrency(cartSubtotal)} →</span>
           </button>
         </div>
       )}

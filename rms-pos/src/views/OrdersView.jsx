@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePOS } from '../context/POSContext';
 import { apiRequest, connectOrderSSE } from '../api/client';
 import { KDSOrderCard } from '../components/kds/KDSOrderCard';
+import toast from 'react-hot-toast';
 import {
   ChefHat,
   Volume2,
@@ -103,12 +104,14 @@ export default function OrdersView() {
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
       );
+      toast.success(`Ticket status: ${newStatus.toUpperCase()}`);
     } catch (err) {
       console.warn('PATCH /orders/:id/status failed, applying local fallback', err);
       updateLocalOrderStatus(orderId, newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
       );
+      toast.success(`Ticket status: ${newStatus.toUpperCase()}`);
     }
   };
 
