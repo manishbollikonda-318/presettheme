@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix rms-pos run dev",
-    "build": "npm --prefix rms-pos run build",
+    "build": "npm --prefix rms-pos install && npm --prefix rms-pos run build && rm -rf dist && cp -r rms-pos/dist dist",
     "preview": "npm --prefix rms-pos run preview"
   }
 }

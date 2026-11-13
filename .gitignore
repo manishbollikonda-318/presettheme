@@ -5,4 +5,5 @@ server/keys/
 server/.env
 rms-pos/node_modules/
 rms-pos/dist/
+dist/
 .DS_Store

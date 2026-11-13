@@ -14,7 +14,7 @@ services:
       - key: PORT
         value: 10000
       - key: CORS_ORIGINS
-        sync: false
+        value: "*"
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_POOL_MAX
@@ -30,7 +30,7 @@ services:
       - key: JWT_GUEST_TTL
         value: 4h
       - key: QR_ENCRYPTION_KEY
-        sync: false
+        value: 3c24fca61efd54a33042d05a3a632fb6103d409213924af028d9a0e528f4e012
       - key: QR_TOKEN_TTL_HOURS
         value: 24
       - key: RATE_LIMIT_LOGIN
