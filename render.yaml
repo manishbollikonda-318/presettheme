@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: loc-qr-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGINS
+        sync: false # Set to your Netlify URL e.g. https://your-site.netlify.app
+      - key: DATABASE_URL
+        sync: false # Set to Supabase Transaction pooler connection string
+      - key: DATABASE_POOL_MAX
+        value: 10
+      - key: JWT_PRIVATE_KEY_B64
+        sync: false # Generate via scripts/generate-keys.sh
+      - key: JWT_PUBLIC_KEY_B64
+        sync: false # Generate via scripts/generate-keys.sh
+      - key: JWT_ACCESS_TTL
+        value: 2h
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: JWT_GUEST_TTL
+        value: 4h
+      - key: QR_ENCRYPTION_KEY
+        sync: false # 32-byte hex string
+      - key: QR_TOKEN_TTL_HOURS
+        value: 24
+      - key: RATE_LIMIT_LOGIN
+        value: 10
+      - key: RATE_LIMIT_QR_VERIFY
+        value: 30
+      - key: RATE_LIMIT_ORDER_CREATE
+        value: 15
