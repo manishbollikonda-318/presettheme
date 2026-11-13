@@ -17,6 +17,8 @@ export const createOrderSchema = z.object({
     .max(20, { message: 'Customer phone number is too long' })
     .regex(/^[+]?[0-9\s\-()]{10,20}$/, { message: 'Invalid phone number format' }),
   table_id: z.string().uuid().optional(),
+  table_number: z.string().trim().max(20).optional(),
+  tableNumber: z.string().trim().max(20).optional(),
   outlet_id: z.string().uuid().optional(),
   promo_code: z.string().trim().max(30).optional(),
   notes: z.string().trim().max(500).optional().default(''),

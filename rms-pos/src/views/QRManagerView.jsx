@@ -11,12 +11,9 @@ import {
   Trash2,
   Edit2,
   RefreshCw,
-  ShieldAlert,
   ShieldCheck,
-  CheckCircle2,
   X,
   ExternalLink,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 
@@ -25,7 +22,6 @@ export default function QRManagerView() {
   const { tenant } = useTenant();
 
   const [tables, setTables] = useState([]);
-  const [activeQRs, setActiveQRs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [bulkCount, setBulkCount] = useState(15);
   const [isBulkGenerating, setIsBulkGenerating] = useState(false);
@@ -36,20 +32,15 @@ export default function QRManagerView() {
   const [newCapacity, setNewCapacity] = useState(4);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Hidden print sheet container ref
+  // Print sheet container ref
   const printSheetRef = useRef(null);
 
-  // Fetch tables and active QRs
+  // Fetch tables
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tableRes, qrRes] = await Promise.all([
-        apiRequest('/tables').catch(() => ({ tables: [] })),
-        apiRequest('/qr/list').catch(() => ({ tokens: [] })),
-      ]);
-
+      const tableRes = await apiRequest('/tables').catch(() => ({ tables: [] }));
       setTables(tableRes.tables || []);
-      setActiveQRs(qrRes.tokens || []);
     } catch (err) {
       console.warn('Data fetch error, using resilient fallback tables:', err);
     } finally {
@@ -72,72 +63,36 @@ export default function QRManagerView() {
 
     setIsBulkGenerating(true);
     let createdCount = 0;
-    let qrCount = 0;
 
     try {
-      // Loop from 1 to count
       for (let i = 1; i <= count; i++) {
-        const tableNum = String(i).padStart(2, '0');
-        // Check if table already exists in state
-        let existing = tables.find((t) => t.table_number === tableNum || t.table_number === String(i));
-        let tableId = existing?.id;
+        const tableNum = String(i);
+        let existing = tables.find(
+          (t) => t.table_number === tableNum || t.table_number === String(i).padStart(2, '0')
+        );
 
         if (!existing) {
           try {
-            const res = await apiRequest('/tables', {
+            await apiRequest('/tables', {
               method: 'POST',
               body: JSON.stringify({
                 table_number: tableNum,
                 capacity: 4,
               }),
             });
-            if (res && res.table) {
-              tableId = res.table.id;
-              createdCount++;
-            }
+            createdCount++;
           } catch (tErr) {
-            // Already exists or DB constraint
-          }
-        }
-
-        // Generate or ensure active QR for this table
-        if (tableId) {
-          try {
-            await apiRequest('/qr/generate', {
-              method: 'POST',
-              body: JSON.stringify({
-                table_id: tableId,
-                ttl_hours: 720,
-              }),
-            });
-            qrCount++;
-          } catch (qrErr) {
-            // continue
+            // Already exists or DB constraint handled
           }
         }
       }
 
-      toast.success(`Generated ${createdCount} tables & refreshed ${qrCount} active QR tokens!`);
+      toast.success(`Generated ${createdCount} physical spot tables!`);
       await loadData();
     } catch (err) {
       toast.error(`Auto-generate failed: ${err.message}`);
     } finally {
       setIsBulkGenerating(false);
-    }
-  };
-
-  // Revoke QR code
-  const handleRevokeQR = async (qrId, tableNum) => {
-    if (!confirm(`Are you sure you want to revoke and regenerate the QR for Table #${tableNum}?`)) {
-      return;
-    }
-
-    try {
-      await apiRequest(`/qr/revoke/${qrId}`, { method: 'POST' });
-      toast.success(`QR token for Table #${tableNum} revoked.`);
-      await loadData();
-    } catch (err) {
-      toast.error(`Revoke failed: ${err.message}`);
     }
   };
 
@@ -183,26 +138,23 @@ export default function QRManagerView() {
     }
   };
 
-  // 1-Click PDF Export Trigger
+  // 1-Click PDF Export Trigger via Browser Print Engine
   const handlePrintPDF = () => {
     window.print();
   };
 
-  // Merge table rows with active QR tokens
+  // Build live spot URL: format ${window.location.origin}/qr/TABLE-${table_number}
   const qrDisplayList = tables.map((t) => {
-    const matchedToken = activeQRs.find((q) => q.table_id === t.id);
-    const tokenStr = matchedToken?.encrypted_token || `demo-token-${t.table_number}`;
-    const scanUrl = `${window.location.origin}/qr/${encodeURIComponent(tokenStr)}`;
+    const rawNumber = String(t.table_number).replace(/^TABLE-/i, '').replace(/^#/, '');
+    const spotUrl = `${window.location.origin}/qr/TABLE-${rawNumber}`;
 
     return {
       table_id: t.id,
-      table_number: t.table_number,
+      table_number: rawNumber,
+      display_label: `TABLE-${rawNumber}`,
       capacity: t.capacity || 4,
       is_active: t.is_active,
-      qr_id: matchedToken?.id,
-      encrypted_token: tokenStr,
-      scan_url: scanUrl,
-      expires_at: matchedToken?.expires_at,
+      scan_url: spotUrl,
     };
   });
 
@@ -213,14 +165,14 @@ export default function QRManagerView() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-[#1F2937] tracking-tight">
-              Table & QR Management
+              Table & Spot QR Management
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-orange-100 text-[#D9480F] text-xs font-mono font-bold">
-              Admin Shield
+              Real Spot QR Engine
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
-            Generate encrypted anti-tamper QR codes locked to physical dining tables and export printable PDF standees.
+            Real QR codes encoding direct table links ({`${window.location.origin}/qr/TABLE-{n}`}) bound to KDS order tickets.
           </p>
         </div>
 
@@ -253,7 +205,7 @@ export default function QRManagerView() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-[#1F2937]">Bulk Table & QR Auto-Generator</h2>
-              <p className="text-xs text-stone-500">Automatically provision sequential dining tables (1 through N) and mint their cryptographic QR keys.</p>
+              <p className="text-xs text-stone-500">Automatically provision sequential dining tables (1 through N) with scannable Spot QR URLs.</p>
             </div>
           </div>
 
@@ -297,7 +249,7 @@ export default function QRManagerView() {
           <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <QrCode className="w-4 h-4 text-[#D9480F]" />
-              <h2 className="font-bold text-sm text-[#1F2937]">Active Physical Table QRs</h2>
+              <h2 className="font-bold text-sm text-[#1F2937]">Active Spot QR Codes</h2>
               <span className="text-xs text-stone-400 font-mono">({qrDisplayList.length} Total)</span>
             </div>
           </div>
@@ -307,9 +259,9 @@ export default function QRManagerView() {
               <thead className="bg-stone-50/80 border-b border-stone-100 text-stone-500 uppercase tracking-wider font-bold text-[10px]">
                 <tr>
                   <th className="px-6 py-3.5">Table Number</th>
-                  <th className="px-6 py-3.5">Preview QR</th>
+                  <th className="px-6 py-3.5">Real QR Component</th>
                   <th className="px-6 py-3.5">Capacity</th>
-                  <th className="px-6 py-3.5">Security Binding</th>
+                  <th className="px-6 py-3.5">Spot Routing URL</th>
                   <th className="px-6 py-3.5">Direct Link</th>
                   <th className="px-6 py-3.5 text-right">Actions</th>
                 </tr>
@@ -334,7 +286,7 @@ export default function QRManagerView() {
                         <div className="p-1.5 bg-white border border-stone-200 rounded-lg inline-block shadow-2xs">
                           <QRCodeSVG
                             value={item.scan_url}
-                            size={44}
+                            size={52}
                             level="M"
                             includeMargin={false}
                           />
@@ -346,9 +298,8 @@ export default function QRManagerView() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Encrypted AES-GCM</span>
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-stone-600 bg-stone-50 px-2 py-1 rounded border border-stone-200/60 max-w-xs truncate">
+                          <span>{item.scan_url}</span>
                         </div>
                       </td>
 
@@ -377,16 +328,6 @@ export default function QRManagerView() {
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-
-                          {item.qr_id && (
-                            <button
-                              onClick={() => handleRevokeQR(item.qr_id, item.table_number)}
-                              title="Revoke and Rotate QR"
-                              className="p-1.5 rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 transition"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            </button>
-                          )}
 
                           <button
                             onClick={() => handleDeleteTable(item.table_id, item.table_number)}
@@ -472,7 +413,7 @@ export default function QRManagerView() {
         </div>
       )}
 
-      {/* Hidden Print Container: Rendered only during window.print() via CSS */}
+      {/* Hidden Print Container: Activated during window.print() */}
       <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8" ref={printSheetRef}>
         <style>{`
           @media print {
@@ -500,11 +441,10 @@ export default function QRManagerView() {
             {tenant?.brandName || 'LOC Restaurant'} • Table QR Standees
           </h1>
           <p className="text-sm text-stone-600 mt-1 font-medium">
-            Scan to order directly from your mobile device. Verified Anti-Fraud Dining Service.
+            Scan to order directly. Food will be served straight to your table.
           </p>
         </div>
 
-        {/* 3x3 Grid of Printable QR Cards */}
         <div className="grid grid-cols-3 gap-6">
           {qrDisplayList.map((item) => (
             <div

@@ -5,8 +5,17 @@ const QRSessionContext = createContext(null);
 
 const STORAGE_KEY_TOKEN = 'qr_guest_jwt';
 const STORAGE_KEY_SESSION = 'qr_guest_session';
+const STORAGE_KEY_TABLE = 'qr_table_number';
 
 export function QRSessionProvider({ children }) {
+  const [tableNumber, setTableNumberState] = useState(() => {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY_TABLE) || '01';
+    } catch {
+      return '01';
+    }
+  });
+
   const [session, setSession] = useState(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY_SESSION);
@@ -27,14 +36,62 @@ export function QRSessionProvider({ children }) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState(null);
 
-  // Authenticate / Resolve QR encrypted token from physical table QR code scan
-  const resolveQRToken = useCallback(async (encryptedToken) => {
+  // Directly set and lock table number from URL route
+  const setTableNumber = useCallback((num) => {
+    if (!num) return;
+    const clean = String(num).replace(/^TABLE-/i, '').replace(/^#/, '');
+    setTableNumberState(clean);
+    sessionStorage.setItem(STORAGE_KEY_TABLE, clean);
+
+    // Sync session table representation
+    setSession((prev) => ({
+      ...(prev || {}),
+      table: { number: clean, id: `tbl-${clean}` },
+    }));
+  }, []);
+
+  // Authenticate / Resolve Spot QR or encrypted token
+  const resolveQRToken = useCallback(async (tokenOrTable) => {
+    if (!tokenOrTable) return;
     setIsVerifying(true);
     setError(null);
+
+    // If param is TABLE-X or number, handle directly as spot table
+    if (String(tokenOrTable).startsWith('TABLE-') || !isNaN(Number(tokenOrTable))) {
+      const cleanNum = String(tokenOrTable).replace(/^TABLE-/i, '');
+      setTableNumber(cleanNum);
+
+      try {
+        const data = await apiRequest(`/qr/demo/${encodeURIComponent(cleanNum)}`);
+        setToken(data.access_token);
+        setSession(data);
+        sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(data));
+        return data;
+      } catch (err) {
+        // Resilient fallback
+        const fallback = {
+          access_token: `guest-token-table-${cleanNum}`,
+          tenant_name: 'Foodie Bistro',
+          table: { number: cleanNum, id: `tbl-${cleanNum}` },
+        };
+        setToken(fallback.access_token);
+        setSession(fallback);
+        sessionStorage.setItem(STORAGE_KEY_TOKEN, fallback.access_token);
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(fallback));
+        return fallback;
+      } finally {
+        setIsVerifying(false);
+      }
+    }
+
     try {
-      const data = await apiRequest(`/qr/verify/${encodeURIComponent(encryptedToken)}`);
+      const data = await apiRequest(`/qr/verify/${encodeURIComponent(tokenOrTable)}`);
       setToken(data.access_token);
       setSession(data);
+      if (data?.table?.number) {
+        setTableNumber(data.table.number);
+      }
       sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
       sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(data));
       localStorage.setItem('rms_jwt_access', data.access_token);
@@ -42,53 +99,29 @@ export function QRSessionProvider({ children }) {
     } catch (err) {
       const msg = err.message || 'Table QR code is invalid or has expired';
       setError(msg);
-      clearSession();
       throw err;
     } finally {
       setIsVerifying(false);
     }
-  }, []);
+  }, [setTableNumber]);
 
-  // Activate a cryptographically verified physical dining table session
-  const activateDemoTable = useCallback(async (tableNumber = '01') => {
-    setIsVerifying(true);
-    setError(null);
-    try {
-      const endpoint = `/qr/demo/${encodeURIComponent(tableNumber)}`;
-      const data = await apiRequest(endpoint);
-      setToken(data.access_token);
-      setSession(data);
-      sessionStorage.setItem(STORAGE_KEY_TOKEN, data.access_token);
-      sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(data));
-      localStorage.setItem('rms_jwt_access', data.access_token);
-      return data;
-    } catch (err) {
-      // Seamless fallback bound strictly to table number
-      const cleanNum = String(tableNumber).replace(/^#/, '').padStart(2, '0');
-      const fallbackSession = {
-        access_token: `demo-guest-token-table-${cleanNum}`,
-        tenant_name: 'Foodie Bistro',
-        table: { number: cleanNum, id: `tbl-${cleanNum}` },
-      };
-      setToken(fallbackSession.access_token);
-      setSession(fallbackSession);
-      sessionStorage.setItem(STORAGE_KEY_TOKEN, fallbackSession.access_token);
-      sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(fallbackSession));
-      localStorage.setItem('rms_jwt_access', fallbackSession.access_token);
-      return fallbackSession;
-    } finally {
-      setIsVerifying(false);
-    }
-  }, []);
+  const activateDemoTable = useCallback(async (num = '01') => {
+    const cleanNum = String(num).replace(/^TABLE-/i, '').replace(/^#/, '');
+    setTableNumber(cleanNum);
+    return resolveQRToken(`TABLE-${cleanNum}`);
+  }, [setTableNumber, resolveQRToken]);
 
   const clearSession = useCallback(() => {
     setToken(null);
     setSession(null);
     sessionStorage.removeItem(STORAGE_KEY_TOKEN);
     sessionStorage.removeItem(STORAGE_KEY_SESSION);
+    sessionStorage.removeItem(STORAGE_KEY_TABLE);
   }, []);
 
   const value = {
+    tableNumber,
+    setTableNumber,
     session,
     token,
     isVerifying,

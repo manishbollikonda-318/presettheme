@@ -41,18 +41,15 @@ function AppLayout() {
     return <Navigate to="/orders" replace />;
   }
 
-  // Exact 3-column docking: Column 3 (RightOrderPanel) is docked on POS and Dining Area
   const showRightOrderColumn = location.pathname === '/pos' || location.pathname === '/dining';
 
   return (
     <div className="h-screen w-screen overflow-hidden flex bg-[#F4F6F8]">
-      {/* Column 1: Left Navigation Sidebar */}
       <Sidebar
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      {/* Main Center Column Workspace + Top Header */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         <TopHeader
           searchQuery={searchQuery}
@@ -63,7 +60,6 @@ function AppLayout() {
         />
 
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Center Main Workspace */}
           <div className="flex-1 flex overflow-hidden">
             <Routes>
               <Route path="/" element={<OverviewView />} />
@@ -81,7 +77,6 @@ function AppLayout() {
             </Routes>
           </div>
 
-          {/* Right Order Queue & Billing Panel */}
           {showRightOrderColumn && (
             <>
               <div className="hidden xl:flex h-full">
@@ -129,8 +124,8 @@ export default function App() {
         <POSProvider>
           <QRSessionProvider>
             <Routes>
-              {/* Customer QR Ordering routes */}
-              <Route path="/qr/:token" element={<QROrderingView />} />
+              {/* Direct Table Route: /qr/:tableNumber */}
+              <Route path="/qr/:tableNumber" element={<QROrderingView />} />
               <Route path="/order" element={<QROrderingView />} />
 
               {/* Full-screen TV Pickup Board */}

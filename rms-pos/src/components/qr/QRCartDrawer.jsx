@@ -32,9 +32,9 @@ export function QRCartDrawer({
   const [orderNotes, setOrderNotes] = useState('');
   const [phoneTouched, setPhoneTouched] = useState(false);
 
-  // Checkout Phase State: 'cart' | 'payment' | 'processing' | 'success'
+  // Checkout State Machine: 'cart' | 'payment' | 'processing' | 'success'
   const [checkoutStep, setCheckoutStep] = useState('cart');
-  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi' | 'card'
+  const [paymentMethod, setPaymentMethod] = useState('upi');
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -51,7 +51,6 @@ export function QRCartDrawer({
 
   if (!isOpen) return null;
 
-  // Handle Proceed to Payment Screen
   const handleProceedToPayment = () => {
     if (!isPhoneValid) {
       setPhoneTouched(true);
@@ -60,7 +59,6 @@ export function QRCartDrawer({
     setCheckoutStep('payment');
   };
 
-  // Mock Gateway: 2-second processing spinner -> green checkmark -> dispatch order to backend
   const handleExecutePayment = () => {
     setCheckoutStep('processing');
 
@@ -68,9 +66,11 @@ export function QRCartDrawer({
       setCheckoutStep('success');
 
       setTimeout(() => {
+        // Explicitly include extracted tableNumber in the order payload
         onSubmitOrder({
           customerName,
           customerPhone: cleanPhone,
+          tableNumber: String(tableNumber).replace(/^TABLE-/i, ''),
           orderNotes: `[Paid via ${paymentMethod.toUpperCase()}] ${orderNotes}`.trim(),
         });
         setCheckoutStep('cart');
@@ -89,7 +89,6 @@ export function QRCartDrawer({
       />
 
       <div className="bg-[#FAF9F6] rounded-t-[32px] max-h-[88vh] flex flex-col shadow-2xl border-t border-stone-200 overflow-hidden pb-[max(1.5rem,env(safe-area-inset-bottom))] transition-transform duration-300 animate-in slide-in-from-bottom">
-        {/* Header */}
         <div className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-stone-200/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {checkoutStep === 'payment' && (
@@ -110,12 +109,12 @@ export function QRCartDrawer({
                   {checkoutStep === 'payment' ? 'Pre-Order Payment' : 'Dine-In Checkout'}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-[#D9480F] text-white font-mono font-extrabold text-xs shadow-2xs">
-                  Table #{tableNumber || '01'}
+                  TABLE {String(tableNumber).replace(/^TABLE-/i, '')}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#D9480F] mt-0.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#D9480F]" />
-                <span>Pay First Anti-Fraud Engine</span>
+                <span>Spot Binding Active</span>
               </div>
             </div>
           </div>
@@ -128,7 +127,6 @@ export function QRCartDrawer({
           </button>
         </div>
 
-        {/* Body based on checkout step */}
         {checkoutStep === 'processing' ? (
           <div className="p-12 flex-1 flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-16 h-16 rounded-3xl bg-orange-100 text-[#D9480F] flex items-center justify-center animate-spin shadow-sm">
@@ -149,17 +147,16 @@ export function QRCartDrawer({
             <div>
               <h3 className="font-extrabold text-base text-emerald-800">Payment Successful!</h3>
               <p className="text-xs text-stone-500 mt-1">
-                Transaction verified. Sending ticket straight to kitchen display...
+                Transaction verified. Sending ticket straight to kitchen for Table {String(tableNumber).replace(/^TABLE-/i, '')}...
               </p>
             </div>
           </div>
         ) : checkoutStep === 'payment' ? (
-          /* Step 2: Payment Selection Gateway */
           <div className="p-6 overflow-y-auto flex-1 space-y-5">
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-emerald-900">Total Payable</p>
-                <p className="text-[11px] text-emerald-700">Table #{tableNumber} • Inclusive of Taxes</p>
+                <p className="text-[11px] text-emerald-700">TABLE {String(tableNumber).replace(/^TABLE-/i, '')} • Inclusive of Taxes</p>
               </div>
               <p className="font-mono text-xl font-black text-emerald-900">
                 {formatCurrency(total)}
@@ -171,7 +168,6 @@ export function QRCartDrawer({
                 Select Upfront Payment Method
               </label>
 
-              {/* UPI Option */}
               <div
                 onClick={() => setPaymentMethod('upi')}
                 className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
@@ -198,7 +194,6 @@ export function QRCartDrawer({
                 </div>
               </div>
 
-              {/* Credit / Debit Card Option */}
               <div
                 onClick={() => setPaymentMethod('card')}
                 className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
@@ -235,12 +230,11 @@ export function QRCartDrawer({
               onClick={handleExecutePayment}
               className="w-full py-3.5 px-6 rounded-2xl bg-[#D9480F] hover:bg-[#C23E0A] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-98 transition"
             >
-              <span>Pay {formatCurrency(total)} & Fire Order</span>
+              <span>Pay {formatCurrency(total)} & Fire to Table {String(tableNumber).replace(/^TABLE-/i, '')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         ) : (
-          /* Step 1: Cart Items & Mandatory Phone Number */
           <>
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {cart.length === 0 ? (
@@ -377,7 +371,7 @@ export function QRCartDrawer({
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-1.5 text-sm font-bold text-[#1F2937]">
-                    <span>Total Payable (Table #{tableNumber || '01'})</span>
+                    <span>Total Payable (TABLE {String(tableNumber).replace(/^TABLE-/i, '')})</span>
                     <span className="font-mono text-base text-[#D9480F]">
                       {formatCurrency(total)}
                     </span>

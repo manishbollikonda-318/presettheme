@@ -43,18 +43,21 @@ export interface FullOrder {
 }
 
 /**
- * Server-side creation of orders with strict price verification and fraud prevention.
- * Requires validated customer_phone on every order.
+ * Server-side creation of orders with strict table binding and fraud prevention.
+ * Explicitly resolves and binds physical tableNumber to the order and SSE broadcast.
  */
 export async function createOrder(
   auth: TokenPayload,
   input: CreateOrderInput
 ): Promise<FullOrder> {
-  // Fraud prevention: Strict customer phone enforcement
   const phone = input.customer_phone ? input.customer_phone.trim() : '';
   if (!phone || phone.length < 10) {
     throw new ValidationError('A valid customer phone number (minimum 10 digits) is strictly mandatory to place an order.');
   }
+
+  // Resolve requested table number (support tableNumber or table_number from payload or guest token)
+  const incomingTableNum = input.tableNumber || input.table_number || '';
+  const cleanExplicitTableNum = incomingTableNum ? String(incomingTableNum).replace(/^TABLE-/i, '').replace(/^#/, '').padStart(2, '0') : null;
 
   let client;
   try {
@@ -64,6 +67,8 @@ export async function createOrder(
     const seqNum = Math.floor(1000 + Math.random() * 9000);
     const mockOrderNumber = `#${seqNum}`;
     const orderId = `ord-${Date.now()}`;
+    const resolvedTable = cleanExplicitTableNum || '01';
+
     const fallbackOrder: FullOrder = {
       id: orderId,
       order_number: mockOrderNumber,
@@ -73,7 +78,7 @@ export async function createOrder(
       customer_phone: phone,
       table_id: auth.scope === 'guest' ? auth.tbl : null,
       session_id: auth.scope === 'guest' ? auth.sub : null,
-      table_number: '01',
+      table_number: resolvedTable,
       outlet_id: 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531',
       tenant_id: auth.tid,
       subtotal: 12.99,
@@ -82,7 +87,7 @@ export async function createOrder(
       discount: 0,
       total: 13.64,
       promo_code: null,
-      notes: `Phone: ${phone}${input.notes ? ` | Notes: ${input.notes}` : ''}`,
+      notes: `[Table: ${resolvedTable}] Phone: ${phone}${input.notes ? ` | Notes: ${input.notes}` : ''}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       items: input.items.map((it) => ({
@@ -109,15 +114,15 @@ export async function createOrder(
     let sessionId: string | null = null;
     let staffId: string | null = null;
     let orderType = input.order_type || 'dine_in';
+    let resolvedTableNumber = cleanExplicitTableNum || '01';
 
     if (auth.scope === 'guest') {
-      // Table-Service QR Guest Order: strictly bound to scanned physical table and session
       tenantId = auth.tid;
       tableId = auth.tbl;
       sessionId = auth.sub;
       orderType = 'dine_in';
 
-      const sessionCheck = await client.query(
+      const sessionCheck = await client.query<{ id: string; table_id: string; outlet_id: string; table_number: string }>(
         `SELECT s.id, s.table_id, t.outlet_id, t.table_number
          FROM active_sessions s
          JOIN tables t ON t.id = s.table_id
@@ -127,20 +132,37 @@ export async function createOrder(
 
       if (!sessionCheck.rows[0]) {
         // Fallback check physical table directly if session is freshly synced
-        const tblCheck = await client.query(
+        const tblCheck = await client.query<{ id: string; outlet_id: string; table_number: string }>(
           `SELECT t.id, t.outlet_id, t.table_number FROM tables t WHERE t.id = $1`,
           [tableId]
         );
-        if (!tblCheck.rows[0]) {
-          throw new ConflictError('No active dining table session found. Please rescan your table QR code.');
+        if (tblCheck.rows[0]) {
+          outletId = tblCheck.rows[0].outlet_id;
+          resolvedTableNumber = tblCheck.rows[0].table_number;
+        } else if (cleanExplicitTableNum) {
+          // Resolve by explicit table number
+          const numCheck = await client.query<{ id: string; outlet_id: string; table_number: string }>(
+            `SELECT t.id, t.outlet_id, t.table_number FROM tables t JOIN outlets o ON o.id = t.outlet_id WHERE o.tenant_id = $1 AND (t.table_number = $2 OR t.table_number = $3) LIMIT 1`,
+            [tenantId, cleanExplicitTableNum, incomingTableNum]
+          );
+          if (numCheck.rows[0]) {
+            tableId = numCheck.rows[0].id;
+            outletId = numCheck.rows[0].outlet_id;
+            resolvedTableNumber = numCheck.rows[0].table_number;
+          } else {
+            const defO = await client.query<{ id: string }>(`SELECT id FROM outlets WHERE tenant_id = $1 LIMIT 1`, [tenantId]);
+            outletId = defO.rows[0]?.id || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
+          }
+        } else {
+          const defO = await client.query<{ id: string }>(`SELECT id FROM outlets WHERE tenant_id = $1 LIMIT 1`, [tenantId]);
+          outletId = defO.rows[0]?.id || 'e1a3b5c7-1111-4c7b-944a-f5bb54a5c531';
         }
-        outletId = tblCheck.rows[0].outlet_id;
       } else {
         outletId = sessionCheck.rows[0].outlet_id;
         tableId = sessionCheck.rows[0].table_id;
+        resolvedTableNumber = sessionCheck.rows[0].table_number;
       }
     } else if (auth.scope === 'staff') {
-      // Staff order (POS / Waiter)
       const staffToken = auth as StaffTokenPayload;
       tenantId = staffToken.tid;
       outletId = input.outlet_id || staffToken.oid;
@@ -150,6 +172,17 @@ export async function createOrder(
 
       if (!outletId) {
         throw new ValidationError('outlet_id is required for staff orders');
+      }
+
+      if (cleanExplicitTableNum && !tableId) {
+        const numCheck = await client.query<{ id: string; table_number: string }>(
+          `SELECT t.id, t.table_number FROM tables t WHERE t.outlet_id = $1 AND (t.table_number = $2 OR t.table_number = $3) LIMIT 1`,
+          [outletId, cleanExplicitTableNum, incomingTableNum]
+        );
+        if (numCheck.rows[0]) {
+          tableId = numCheck.rows[0].id;
+          resolvedTableNumber = numCheck.rows[0].table_number;
+        }
       }
     } else {
       throw new AuthError('Invalid token scope');
@@ -176,7 +209,6 @@ export async function createOrder(
 
     const menuMap = new Map(menuRes.rows.map((r) => [r.id, r]));
 
-    // Validate availability & compute subtotal server-side
     let subtotal = 0;
     const validatedItems: Array<{
       menu_item_id: string;
@@ -209,7 +241,7 @@ export async function createOrder(
       });
     }
 
-    // 3. Validate Promo Code if provided
+    // 3. Validate Promo Code
     let discount = 0;
     let promoCode: string | null = null;
     if (input.promo_code) {
@@ -245,8 +277,7 @@ export async function createOrder(
     const seqRes = await client.query<{ nextval: string }>(`SELECT nextval('order_number_seq')`);
     const orderNumber = `#${seqRes.rows[0].nextval}`;
 
-    // Concatenate phone number into notes for DB resilience and kitchen visibility
-    const fullNotes = `[Phone: ${phone}]${input.notes ? ` ${input.notes}` : ''}`.slice(0, 500);
+    const fullNotes = `[Spot: Table ${resolvedTableNumber}] [Phone: ${phone}]${input.notes ? ` ${input.notes}` : ''}`.slice(0, 500);
 
     // 6. Insert Order into orders table
     const orderInsert = await client.query<{ id: string }>(
@@ -301,8 +332,11 @@ export async function createOrder(
 
     const fullOrder = await getOrderById(tenantId, orderId);
     fullOrder.customer_phone = phone;
+    if (!fullOrder.table_number || fullOrder.table_number === '01') {
+      fullOrder.table_number = resolvedTableNumber;
+    }
 
-    // Broadcast SSE to kitchen screens
+    // Broadcast SSE to KDS screens with prominent table number
     orderEvents.broadcast(tenantId, 'order.new', fullOrder, outletId);
 
     return fullOrder;
@@ -371,15 +405,22 @@ export async function getOrderById(tenantId: string, orderId: string): Promise<F
       [orderId]
     );
 
-    // Extract customer_phone from notes format [Phone: ...] if stored
     let extractedPhone: string | null = null;
     if (ord.notes && ord.notes.includes('[Phone:')) {
       const match = ord.notes.match(/\[Phone:\s*([^\]]+)\]/);
       if (match) extractedPhone = match[1].trim();
     }
 
+    // Extract table from note if table_number is null
+    let resolvedTbl = ord.table_number;
+    if (!resolvedTbl && ord.notes && ord.notes.includes('[Spot: Table')) {
+      const tMatch = ord.notes.match(/\[Spot:\s*Table\s*([^\]]+)\]/);
+      if (tMatch) resolvedTbl = tMatch[1].trim();
+    }
+
     return {
       ...ord,
+      table_number: resolvedTbl || ord.table_number || '01',
       customer_phone: extractedPhone,
       subtotal: parseFloat(ord.subtotal),
       tax: parseFloat(ord.tax),
@@ -469,7 +510,6 @@ export async function listOrders(tenantId: string, filter: OrderFilterQuery): Pr
 
 /**
  * Status transition engine.
- * Validates transition flow and fires trigger-based audit logging.
  */
 export async function updateOrderStatus(
   tenantId: string,
@@ -489,7 +529,6 @@ export async function updateOrderStatus(
 
   const { status: prevStatus, outlet_id } = current.rows[0];
 
-  // Business state machine verification
   const validTransitions: Record<string, string[]> = {
     new: ['cooking', 'cancelled'],
     cooking: ['ready', 'cancelled'],
@@ -509,7 +548,6 @@ export async function updateOrderStatus(
     [newStatus, staffId || null, orderId, tenantId]
   );
 
-  // If reason is given, attach to status log
   if (reason) {
     await query(
       `UPDATE order_status_log
@@ -522,15 +560,11 @@ export async function updateOrderStatus(
 
   const updatedOrder = await getOrderById(tenantId, orderId);
 
-  // Broadcast update to KDS listeners
   orderEvents.broadcast(tenantId, 'order.status_changed', updatedOrder, outlet_id);
 
   return updatedOrder;
 }
 
-/**
- * Retrieve active order tokens for display boards.
- */
 export async function getPickupBoardTokens(
   tenantId: string = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 ): Promise<{

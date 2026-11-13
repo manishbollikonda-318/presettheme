@@ -1,39 +1,58 @@
 import { KDSTimer } from './KDSTimer';
-import { ChefHat, Check, X, Flame } from 'lucide-react';
+import { ChefHat, Check, X, Flame, UtensilsCrossed, MapPin } from 'lucide-react';
 
 export function KDSOrderCard({ order, onUpdateStatus }) {
   const isCooking = order.status === 'cooking' || order.status === 'Cooking';
   const isNew = order.status === 'new' || order.status === 'New';
 
   const orderNumber = order.order_number || order.orderId || '#0000';
-  const isTakeaway = (order.order_type || order.orderType || 'takeaway').toLowerCase() === 'takeaway';
+  const isTakeaway = (order.order_type || order.orderType || 'dine_in').toLowerCase() === 'takeaway';
+
+  // Extract explicit table number
+  let tableDisplay = order.table_number || order.tableNumber;
+  if (!tableDisplay && order.notes && order.notes.includes('[Spot: Table')) {
+    const match = order.notes.match(/\[Spot:\s*Table\s*([^\]]+)\]/);
+    if (match) tableDisplay = match[1].trim();
+  }
+  if (!tableDisplay) tableDisplay = '01';
 
   return (
     <div className="bg-[#1A1D27] border-2 border-[#2A2D3A] hover:border-amber-500/50 rounded-2xl flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-200">
-      {/* Card Header: Prominent Pickup Token # */}
+      {/* Card Header: Prominent Spot Table & Order Ticket */}
       <div className="p-4 border-b border-[#2A2D3A] bg-[#141720]">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">
-              PICKUP TOKEN
-            </div>
-            <span className="font-mono text-3xl font-black text-white tracking-tight">
+        <div className="flex items-center justify-between mb-3">
+          {/* Massive Yellow Table Badge for the Chef */}
+          <div className="flex items-center gap-2">
+            <span className="px-3.5 py-1.5 rounded-xl text-base font-black uppercase tracking-wider bg-amber-400 text-slate-950 border-2 border-amber-300 shadow-md flex items-center gap-1.5 animate-pulse">
+              <UtensilsCrossed className="w-4 h-4 stroke-[2.5]" />
+              <span>TABLE {tableDisplay}</span>
+            </span>
+
+            <span className="font-mono text-xl font-extrabold text-slate-300 tracking-tight">
               {orderNumber}
             </span>
           </div>
+
           <KDSTimer createdAt={order.created_at || order.createdAt} />
         </div>
 
-        {/* Pickup / QSR Type Badge & Customer Name */}
-        <div className="flex items-center gap-2">
-          <span className="px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider bg-orange-500/20 text-[#D9480F] border border-orange-500/30">
-            {isTakeaway ? 'COUNTER PICKUP' : 'EXPRESS ORDER'}
-          </span>
-          {order.customer_name || order.customerName ? (
-            <span className="text-xs text-slate-300 font-semibold truncate bg-slate-800/80 px-2 py-0.5 rounded-md">
-              👤 {order.customer_name || order.customerName}
+        {/* Guest Details & Contact */}
+        <div className="flex items-center justify-between text-xs text-slate-300">
+          <div className="flex items-center gap-1.5 font-medium truncate">
+            <span>👤</span>
+            <span className="font-bold text-white truncate">
+              {order.customer_name || order.customerName || 'Dining Guest'}
             </span>
-          ) : null}
+            {order.customer_phone && (
+              <span className="text-[11px] text-slate-400 font-mono">
+                ({order.customer_phone})
+              </span>
+            )}
+          </div>
+
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+            {isTakeaway ? 'Takeaway' : 'Dine-In'}
+          </span>
         </div>
       </div>
 
@@ -94,18 +113,9 @@ export function KDSOrderCard({ order, onUpdateStatus }) {
             className="flex-1 py-3.5 px-4 bg-[#22C55E] hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-emerald-900/30"
           >
             <Check className="w-5 h-5 stroke-[3]" />
-            MARK READY
+            MARK READY (SERVE TABLE {tableDisplay})
           </button>
         )}
-
-        {/* Bump (Complete/Dismiss) */}
-        <button
-          onClick={() => onUpdateStatus(order.id, 'completed')}
-          className="p-3 bg-[#2A2D3A] hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors"
-          title="Bump order ticket"
-        >
-          <X className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );
