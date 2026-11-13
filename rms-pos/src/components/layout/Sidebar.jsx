@@ -20,12 +20,14 @@ import {
   Hexagon,
   X,
   Tv,
+  QrCode,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { key: 'overview', label: 'Overview', icon: LayoutGrid, path: '/' },
   { key: 'pos', label: 'Point of Sale', icon: Store, path: '/pos' },
   { key: 'dining', label: 'Dining Area', icon: UtensilsCrossed, path: '/dining' },
+  { key: 'qrs', label: 'QR Management', icon: QrCode, path: '/qr-manager' },
   { key: 'orders', label: 'Order Queue', icon: ClipboardList, path: '/orders', badge: true },
   { key: 'tv', label: 'TV Pickup Board', icon: Tv, path: '/pickup-board' },
   { key: 'promo', label: 'Promo & Discounts', icon: TicketPercent, path: '/promo' },
@@ -98,147 +100,146 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }) {
       >
         {/* Brand Header */}
         <div>
-          <div className="flex items-center justify-between p-4 pb-2">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
-                style={{ backgroundColor: 'var(--brand-primary)' }}
-              >
-                <Hexagon className="w-5 h-5 text-white" />
+          <div className="h-[68px] px-5 flex items-center justify-between border-b border-slate-100">
+            <div
+              onClick={() => handleNavClick('/')}
+              className="flex items-center gap-2.5 cursor-pointer overflow-hidden"
+            >
+              <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/20">
+                <Hexagon className="w-5 h-5 text-white fill-white" />
               </div>
               {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-base font-bold text-slate-900 truncate tracking-tight">
-                    {tenant.brandName}
-                  </h1>
-                  <p className="text-[10px] text-slate-400 truncate">{tenant.tagline}</p>
+                <div className="leading-tight truncate">
+                  <span className="font-extrabold text-[15px] tracking-tight text-slate-800 block truncate">
+                    {tenant?.brandName || 'LOC RMS'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">
+                    Admin Platform
+                  </span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-1">
-              {/* Collapse/Expand for desktop */}
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 shrink-0 transition-colors"
-                title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-              >
-                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-              </button>
-
-              {/* Close button for mobile */}
-              <button
-                onClick={onCloseMobile}
-                className="md:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 shrink-0 transition-colors"
-                title="Close Navigation"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 md:hidden"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Primary Navigation List */}
-          <nav className="mt-4 px-3 space-y-1">
-            {NAV_ITEMS.filter((item) => hasPermission(item.key)).map((item) => {
-              const active =
-                location.pathname === item.path ||
-                (item.path === '/' && location.pathname === '/');
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => handleNavClick(item.path)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                    active
-                      ? 'text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                  style={active ? { backgroundColor: 'var(--brand-primary)' } : undefined}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <Icon className="w-[18px] h-[18px] shrink-0" />
-                  {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-                  {!collapsed && item.badge && activeOrders > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
-                      style={{
-                        backgroundColor: active
-                          ? 'rgba(255,255,255,0.3)'
-                          : 'var(--brand-primary)',
-                      }}
-                    >
-                      {activeOrders}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Divider */}
-          <div className="my-3 mx-4 border-t border-slate-100" />
-
-          {/* Secondary Navigation List */}
-          <nav className="px-3 space-y-1">
-            {SECONDARY_NAV.filter((item) => hasPermission(item.key)).map((item) => {
+          {/* Primary Nav */}
+          <nav className="p-3 space-y-1">
+            {NAV_ITEMS.map((item) => {
               const active = location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <button
                   key={item.key}
                   onClick={() => handleNavClick(item.path)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full h-10 px-3 rounded-xl flex items-center gap-3 transition-colors text-[13px] font-semibold relative group ${
                     active
-                      ? 'text-white shadow-xs'
+                      ? 'bg-orange-50 text-orange-600 font-bold'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
-                  style={active ? { backgroundColor: 'var(--brand-primary)' } : undefined}
                   title={collapsed ? item.label : undefined}
                 >
-                  <Icon className="w-[18px] h-[18px] shrink-0" />
-                  {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
+                  <Icon
+                    className={`w-5 h-5 shrink-0 transition-colors ${
+                      active ? 'text-orange-600' : 'text-slate-400 group-hover:text-slate-600'
+                    }`}
+                  />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+
+                  {item.badge && activeOrders > 0 && !collapsed && (
+                    <span className="ml-auto bg-orange-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      {activeOrders}
+                    </span>
+                  )}
+                  {item.badge && activeOrders > 0 && collapsed && (
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-600" />
+                  )}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Bottom User Profile Card */}
-        {user && (
-          <div className="p-3 border-t border-slate-100 bg-slate-50/50">
-            <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}>
-              <div className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shrink-0 shadow-2xs">
-                {user.avatar || '🧑'}
-              </div>
+        {/* Bottom Section */}
+        <div>
+          {/* Secondary Nav */}
+          <div className="px-3 py-2 border-t border-slate-100 space-y-1">
+            {SECONDARY_NAV.map((item) => {
+              const active = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => handleNavClick(item.path)}
+                  className={`w-full h-9 px-3 rounded-xl flex items-center gap-3 transition-colors text-[12px] font-medium group ${
+                    active
+                      ? 'bg-slate-100 text-slate-900 font-semibold'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-slate-600" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
 
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold text-slate-800 truncate">{user.name}</p>
-                    <span
-                      className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded-md ${getRoleBadgeStyle(
-                        user.role
-                      )}`}
-                    >
-                      {user.role}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{user.email}</p>
+          {/* User Profile Card + Collapse Toggle */}
+          <div className="p-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            {!collapsed ? (
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-700 shrink-0">
+                  {user?.avatar || '👤'}
                 </div>
-              )}
-
-              {!collapsed && (
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="text-xs font-bold text-slate-800 truncate">{user?.name}</p>
+                  <span
+                    className={`inline-block text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded ${getRoleBadgeStyle(
+                      user?.role
+                    )}`}
+                  >
+                    {user?.role}
+                  </span>
+                </div>
                 <button
                   onClick={handleLogout}
-                  className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-colors"
-                  title="Logout Session"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                  title="Logout"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="w-full h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Collapse toggle (desktop only) */}
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition shrink-0"
+              title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              {collapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
               )}
-            </div>
+            </button>
           </div>
-        )}
+        </div>
       </aside>
     </>
   );

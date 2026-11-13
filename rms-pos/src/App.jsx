@@ -21,6 +21,7 @@ import CustomersView from './views/CustomersView';
 import BillingView from './views/BillingView';
 import SettingsView from './views/SettingsView';
 import HelpView from './views/HelpView';
+import QRManagerView from './views/QRManagerView';
 import QROrderingView from './views/qr/QROrderingView';
 import PickupBoardView from './views/PickupBoardView';
 
@@ -45,7 +46,7 @@ function AppLayout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex bg-[#F4F6F8]">
-      {/* Column 1: Left Navigation Sidebar (245px on desktop, off-canvas on mobile) */}
+      {/* Column 1: Left Navigation Sidebar */}
       <Sidebar
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
@@ -53,7 +54,6 @@ function AppLayout() {
 
       {/* Main Center Column Workspace + Top Header */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {/* Top Global Utility Bar (68px) */}
         <TopHeader
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -62,14 +62,14 @@ function AppLayout() {
           showCartButton={showRightOrderColumn}
         />
 
-        {/* Center Workspace + Right Column Container */}
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Column 2: Center Main Workspace */}
+          {/* Center Main Workspace */}
           <div className="flex-1 flex overflow-hidden">
             <Routes>
               <Route path="/" element={<OverviewView />} />
               <Route path="/pos" element={<POSView searchQuery={searchQuery} />} />
               <Route path="/dining" element={<DiningView />} />
+              <Route path="/qr-manager" element={<QRManagerView />} />
               <Route path="/orders" element={<OrdersView />} />
               <Route path="/promo" element={<PromoView />} />
               <Route path="/staff" element={<StaffView />} />
@@ -81,15 +81,13 @@ function AppLayout() {
             </Routes>
           </div>
 
-          {/* Column 3: Right Order Queue & Billing Panel */}
+          {/* Right Order Queue & Billing Panel */}
           {showRightOrderColumn && (
             <>
-              {/* Desktop Docked Version (xl screens >= 1280px) */}
               <div className="hidden xl:flex h-full">
                 <RightOrderPanel />
               </div>
 
-              {/* Mobile / Tablet Drawer Version (< 1280px) */}
               {mobileCartOpen && (
                 <div className="xl:hidden fixed inset-0 z-50 flex justify-end">
                   <div
@@ -131,11 +129,11 @@ export default function App() {
         <POSProvider>
           <QRSessionProvider>
             <Routes>
-              {/* Customer QR Ordering routes (Isolated from staff layout) */}
+              {/* Customer QR Ordering routes */}
               <Route path="/qr/:token" element={<QROrderingView />} />
               <Route path="/order" element={<QROrderingView />} />
 
-              {/* Full-screen TV Pickup Board (Isolated from staff layout for TV mounting) */}
+              {/* Full-screen TV Pickup Board */}
               <Route path="/pickup-board" element={<PickupBoardView />} />
               <Route path="/tv" element={<PickupBoardView />} />
 
